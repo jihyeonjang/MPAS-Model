@@ -210,7 +210,11 @@
 !$OMP PARALLEL DO
        do thread=1,nThreads
           call driver_cloudiness(block%configs,mesh,diag_physics,sfc_input, &
-                                 cellSolveThreadStart(thread),cellSolveThreadEnd(thread))
+!++JHJ
+                                 !cellSolveThreadStart(thread),cellSolveThreadEnd(thread)) !ORG
+                                 cellSolveThreadStart(thread),cellSolveThreadEnd(thread), &
+                          errmsg,errflg)
+!--JHJ
        end do
 !$OMP END PARALLEL DO
     endif

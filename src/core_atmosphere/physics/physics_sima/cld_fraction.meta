@@ -1,0 +1,148 @@
+[ccpp-arg-table]
+  name = cld_fraction_run
+  type = scheme
+[cldfrac]
+  standard_name = cloud_fraction
+  long_name = cloud fraction
+  units = kg kg-1
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[t_p]
+  standard_name = air_temperature
+  long_name = air temperature
+  units =  K
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[pres_p]
+  standard_name = air_pressure
+  long_name = air pressure
+  units = Pa
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[qv]
+  standard_name = water_vapor_mixing_ratio
+  long_name = water vapor mixing ratio
+  units = kg kg-1
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[qc]
+  standard_name = cloud_condensed_water_mixing_ratio
+  long_name = cloud condensed water mixing ratio
+  units = kg kg-1
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[qi]
+  standard_name = ice_water_mixing_ratio
+  long_name = ice water mixing ratio
+  units = kg kg-1
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[qs]
+  standard_name = snow_water_mixing_ratio
+  long_name = snow water mixing ratio
+  units = kg kg-1
+  dimensions = (horizontal_loop_start:horizontal_loop_end,vertical_layer_start:vertical_layer_end)
+  type = real | kind = kind_phys
+  intent = in
+  optional = F
+[its]
+  standard_name = horizontal_loop_start
+  long_name = horizontal loop start
+  units = none
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[ite]
+  standard_name = horizontal_loop_end
+  long_name = horizontal loop end
+  units = none
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[kts]
+  standard_name = vertical_layer_start
+  long_name = vertical layer start
+  units = none
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[kte]
+  standard_name = vertical_layer_end
+  long_name = vertical layer end
+  units = none
+  dimensions = ()
+  type = integer
+  intent = in
+  optional = F
+[errmsg]
+  standard_name = ccpp_error_message
+  long_name = error message for error handling in CCPP
+  units = 1
+  dimensions = ()
+  type = character
+  kind = len=*
+  intent = out
+  optional = F
+[errflg]
+  standard_name = ccpp_error_flag
+  long_name = error flag for error handling in CCPP
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = out
+  optional = F
+[ccpp-arg-table]
+  name = cld_fraction_init
+  type = scheme
+[errmsg]
+  standard_name = ccpp_error_message
+  long_name = error message for error handling in CCPP
+  units = 1
+  dimensions = ()
+  type = character
+  kind = len=*
+  intent = out
+  optional = F
+[errflg]
+  standard_name = ccpp_error_flag
+  long_name = error flag for error handling in CCPP
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = out
+  optional = F
+[ccpp-arg-table]
+  name = cld_fraction_finalize
+  type = scheme
+[errmsg]
+  standard_name = ccpp_error_message
+  long_name = error message for error handling in CCPP
+  units = 1
+  dimensions = ()
+  type = character
+  kind = len=*
+  intent = out
+  optional = F
+[errflg]
+  standard_name = ccpp_error_flag
+  long_name = error flag for error handling in CCPP
+  units = flag
+  dimensions = ()
+  type = integer
+  intent = out
+  optional = F

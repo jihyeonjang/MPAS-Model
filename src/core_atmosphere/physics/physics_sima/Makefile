@@ -6,7 +6,8 @@ dummy:
 	echo "****** compiling physics_sima ******"
 
 OBJS = \
-	bl_ysu.o
+	bl_ysu.o                       \
+	cld_fraction.o
 
 physics_sima: $(OBJS)
 	ar -ru ./../libphys.a $(OBJS)

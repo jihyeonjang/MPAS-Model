@@ -14,6 +14,10 @@
  use mpas_atmphys_constants, only: ep_2
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
+
+!++JHJ
+ use cld_fraction, only: cldfraction
+!--JHJ
  
  implicit none
  private
@@ -167,7 +171,11 @@
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
- subroutine driver_cloudiness(configs,mesh,diag_physics,sfc_input,its,ite)
+!++JHJ
+ !subroutine driver_cloudiness(configs,mesh,diag_physics,sfc_input,its,ite) !ORG
+ subroutine driver_cloudiness(configs,mesh,diag_physics,sfc_input,its,ite, &
+                       errmsg,errflg)
+!--JHJ
 !=================================================================================================================
 
 !input arguments:
@@ -179,6 +187,12 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+
+!++JHJ
+!out arguments:
+ character(len=*),intent(out):: errmsg
+ integer,         intent(out):: errflg
+!--JHJ
 
 !local variables and pointers:
  character(len=StrKIND),pointer:: radt_cld_scheme
@@ -202,7 +216,17 @@
 
     case("cld_fraction")
       call mpas_timer_start('calc_cldfraction')
-      call calc_cldfraction(cldfrac_p,t_p,pres_p,qvrad_p,qcrad_p,qirad_p,qs_p,its,ite)
+!++JHJ
+      !call calc_cldfraction(cldfrac_p,t_p,pres_p,qvrad_p,qcrad_p,qirad_p,qs_p,its,ite) !JHJ
+      call cldfraction( &
+           cldfrac_3d = cldfrac_p , t_p_3d  = t_p , pres_p_3d = pres_p ,            &
+           qv_3d = qvrad_p , qc_3d = qcrad_p , qi_3d = qirad_p , qs_3d = qs_p ,     &
+           ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,  &
+           ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme ,  &
+           its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte ,  &
+           errmsg   = errmsg     , errflg   = errflg                                &
+                      )
+!--JHJ
       call mpas_timer_stop('calc_cldfraction')
 
     case("cld_fraction_thompson")
