@@ -14,6 +14,8 @@
  use mpas_atmphys_constants, only: ep_2
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
+
+ use cld_fraction, only: calc_cldfraction
  
  implicit none
  private
@@ -33,7 +35,6 @@
 ! cloudiness_to_MPAS   : copy local arrays to MPAS arrays.
 ! driver_cloudiness    : main driver (called from subroutine physics_driver).
 ! calc_cldincidence    : calculates the cloud fraction as 0 or 1, depending on cloud condensates.
-! calc_cldfraction     : calculates the cloud fraction as a function of the relative humidity.
 !
 ! add-ons and modifications to sourcecode:
 ! ----------------------------------------
@@ -167,7 +168,8 @@
  end subroutine cloudiness_to_MPAS
 
 !=================================================================================================================
- subroutine driver_cloudiness(configs,mesh,diag_physics,sfc_input,its,ite)
+ subroutine driver_cloudiness(configs,mesh,diag_physics,sfc_input,its,ite, &
+                       errmsg,errflg)
 !=================================================================================================================
 
 !input arguments:
@@ -179,6 +181,10 @@
 
 !inout arguments:
  type(mpas_pool_type),intent(inout):: diag_physics
+
+!out arguments:
+ character(len=*),intent(out):: errmsg
+ integer,         intent(out):: errflg
 
 !local variables and pointers:
  character(len=StrKIND),pointer:: radt_cld_scheme
@@ -202,7 +208,14 @@
 
     case("cld_fraction")
       call mpas_timer_start('calc_cldfraction')
-      call calc_cldfraction(cldfrac_p,t_p,pres_p,qvrad_p,qcrad_p,qirad_p,qs_p,its,ite)
+      call calc_cldfraction( &
+           cldfrac_3d = cldfrac_p , t_p_3d  = t_p , pres_p_3d = pres_p ,            &
+           qv_3d = qvrad_p , qc_3d = qcrad_p , qi_3d = qirad_p , qs_3d = qs_p ,     &
+           ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,  &
+           ims = ims , ime = ime , jms = jms , jme = jme , kms = kds , kme = kme ,  &
+           its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte ,  &
+           errmsg   = errmsg     , errflg   = errflg                                &
+                      )
       call mpas_timer_stop('calc_cldfraction')
 
     case("cld_fraction_thompson")
@@ -274,95 +287,6 @@
  endif
     
  end subroutine calc_cldincidence
-
-!=================================================================================================================
- subroutine calc_cldfraction(cldfrac,t_p,pres_p,qv,qc,qi,qs,its,ite)
-!=================================================================================================================
-
-!input arguments:
- integer,intent(in):: its,ite
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: qv,qc,qi,qs
- real(kind=RKIND),intent(in),dimension(ims:ime,kms:kme,jms:jme):: t_p,pres_p
-
-!output arguments:
- real(kind=RKIND),intent(out),dimension(ims:ime,kms:kme,jms:jme):: cldfrac
-
-!local variables:
- integer:: i,j,k
-
- real(kind=RKIND),parameter:: alpha0  = 100.
- real(kind=RKIND),parameter:: gamma   = 0.49
- real(kind=RKIND),parameter:: qcldmin = 1.e-12
- real(kind=RKIND),parameter:: pexp    = 0.25
- real(kind=RKIND),parameter:: rhgrid  = 1.0
-
- real(kind=RKIND),parameter:: svp1  = 0.61078
- real(kind=RKIND),parameter:: svp2  = 17.2693882
- real(kind=RKIND),parameter:: svpi2 = 21.8745584
- real(kind=RKIND),parameter:: svp3  = 35.86
- real(kind=RKIND),parameter:: svpi3 = 7.66
- real(kind=RKIND),parameter:: svpt0 = 273.15
-
- real(kind=RKIND):: esi,esw,qvsi,qvsw
- real(kind=RKIND):: arg,denom,qcld,qvs,rhum,subsat,weight
-
-!-----------------------------------------------------------------------------------------------------------------
-
- do j = jts,jte
- do k = kts,kte
- do i = its,ite
-    cldfrac(i,k,j) = 0._RKIND
- enddo
- enddo
- enddo
- 
- do j = jts,jte
- do k = kts,kte
- do i = its,ite
-
-!... calculation of the saturation mixing ratios over water and over ice (Murray, 1966):
-    esw = 1000. * svp1 * exp(svp2 * (t_p(i,k,j) - svpt0) / (t_p(i,k,j) - svp3))
-    esi = 1000. * svp1 * exp(svpi2 * (t_p(i,k,j) - svpt0) / (t_p(i,k,j) - svpi3))
-
-    qvsw = ep_2 * esw / (pres_p(i,k,j) - esw)
-    qvsi = ep_2 * esi / (pres_p(i,k,j) - esi)
-
-    qcld = qc(i,k,j) + qi(i,k,j) + qs(i,k,j)
-    if(qcld .lt. qcldmin) then
-       weight = 0.
-    else
-       weight = (qi(i,k,j) + qs(i,k,j)) / qcld
-    endif
-
-    qvs = (1-weight) * qvsw + weight * qvsi
-    rhum = qv(i,k,j) / qvs
-
-    if(qcld .lt. qcldmin) then
-
-       !assume that the cloud fraction is equal to 0. when the cloudy mixing ratio equals 0.
-       cldfrac(i,k,j) = 0.
-
-    elseif(rhum .ge. rhgrid) then
-       !assume that the cloud fraction is equal to 1. when the relative humidity equal 100%.
-       cldfrac(i,k,j) = 1.
-
-    else
-       !computation of the cloud fraction:
-       subsat = max(1.e-10,rhgrid*qvs-qv(i,k,j))
-       denom  = subsat**gamma
-       arg    = max(-6.9,-alpha0*qcld/denom) ! exp(-6.9) = 0.001
-
-       rhum = max(1.e-10,rhum)
-       cldfrac(i,k,j) = (rhum/rhgrid)**pexp*(1.-exp(arg))
-       if(cldfrac(i,k,j) .lt. 0.01) cldfrac(i,k,j) = 0.
-
-    endif
-
- enddo
- enddo
- enddo
-
- end subroutine calc_cldfraction
 
 !=================================================================================================================
  end module mpas_atmphys_driver_cloudiness
