@@ -1,5 +1,5 @@
 [ccpp-arg-table]
-  name = cld_fraction_run
+  name = cld_xurandall_run
   type = scheme
 [cldfrac]
   standard_name = cloud_fraction
@@ -107,7 +107,7 @@
   intent = out
   optional = F
 [ccpp-arg-table]
-  name = cld_fraction_init
+  name = cld_xurandall_init
   type = scheme
 [errmsg]
   standard_name = ccpp_error_message
@@ -127,7 +127,7 @@
   intent = out
   optional = F
 [ccpp-arg-table]
-  name = cld_fraction_finalize
+  name = cld_xurandall_finalize
   type = scheme
 [errmsg]
   standard_name = ccpp_error_message

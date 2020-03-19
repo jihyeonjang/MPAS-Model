@@ -15,7 +15,7 @@
  use mpas_atmphys_vars
  use module_mp_thompson_cldfra3
 
- use cld_fraction, only: calc_cldfraction
+ use module_cld_xurandall, only: xurandall
  
  implicit none
  private
@@ -207,8 +207,8 @@
       call mpas_timer_stop('calc_cldincidence')
 
     case("cld_fraction")
-      call mpas_timer_start('calc_cldfraction')
-      call calc_cldfraction( &
+      call mpas_timer_start('xurandall')
+      call xurandall( &
            cldfrac_3d = cldfrac_p , t_p_3d  = t_p , pres_p_3d = pres_p ,            &
            qv_3d = qvrad_p , qc_3d = qcrad_p , qi_3d = qirad_p , qs_3d = qs_p ,     &
            ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,  &
@@ -216,7 +216,7 @@
            its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte ,  &
            errmsg   = errmsg     , errflg   = errflg                                &
                       )
-      call mpas_timer_stop('calc_cldfraction')
+      call mpas_timer_stop('xurandall')
 
     case("cld_fraction_thompson")
       call mpas_timer_start('cal_cldfra3')
