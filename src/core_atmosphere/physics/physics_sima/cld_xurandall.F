@@ -23,7 +23,7 @@ contains
 !! \htmlinclude arg_table_cld_xurandall_run.html
 !!
    subroutine cld_xurandall_run(cldfrac,t_p,pres_p,qv,qc,qi,qs,                &
-                               its,ite,kts,kte,                                &
+                               its,ite,kte,                                    &
                                errmsg,errflg                                   &
                                )
 !-------------------------------------------------------------------------------
@@ -49,10 +49,12 @@ contains
    real,parameter    ::  svp3  = 35.86
    real,parameter    ::  svpi3 = 7.66
    real,parameter    ::  svpt0 = 273.15
+
+   integer,parameter :: kts=1
 !
 !  input arguments:
 !
-   integer,  intent(in)      :: its,ite,kts,kte
+   integer,  intent(in)      :: its,ite,kte
 
    real,     dimension( its:ite, kts:kte ),                                    &
              intent(in)      ::                                            qv, &

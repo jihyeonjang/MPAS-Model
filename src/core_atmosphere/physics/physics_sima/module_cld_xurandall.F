@@ -77,7 +77,7 @@ contains
       end do
 !
    call cld_xurandall_run(cldfrac,t_p,pres_p,qv,qc,qi,qs,                       &
-                               its,ite,kts,kte,                                &
+                               its,ite,kte,                                     &
                                errmsg,errflg)
 !
       do k = kts, kte
