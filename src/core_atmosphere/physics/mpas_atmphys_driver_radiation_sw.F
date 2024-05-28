@@ -919,8 +919,6 @@
        call rrtmg_swrad( &
               p3d        = pres_hyd_p    , p8w      = pres2_hyd_p , pi3d     = pi_p           , &
               t3d        = t_p           , t8w      = t2_p        , dz8w     = dz_p           , &
-!             qv3d       = qv_p          , qc3d     = qc_p        , qi3d     = qi_p           , &
-!             qs3d       = qs_p          , cldfra3d = cldfrac_p   , tsk      = tsk_p          , &
               qv3d       = qvrad_p       , qc3d     = qcrad_p     , qi3d     = qirad_p        , &
               qs3d       = qsrad_p       , cldfra3d = cldfrac_p   , tsk      = tsk_p          , &
               albedo     = sfc_albedo_p  , xland    = xland_p     , xice     = xice_p         , &
@@ -938,6 +936,7 @@
               swdnt      = swdnt_p       , swdntc   = swdntc_p    , swupb      = swupb_p      , &
               swupbc     = swupbc_p      , swdnb    = swdnb_p     , swdnbc     = swdnbc_p     , &
               swddir     = swddir_p      , swddni   = swddni_p    , swddif     = swddif_p     , &
+              julian     = curr_julday   ,                                                      &
               ids = ids , ide = ide , jds = jds , jde = jde , kds = kds , kde = kde ,           &
               ims = ims , ime = ime , jms = jms , jme = jme , kms = kms , kme = kme ,           &
               its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte             &
