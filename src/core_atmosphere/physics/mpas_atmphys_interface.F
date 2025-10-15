@@ -860,20 +860,11 @@
     !updates water vapor, cloud liquid water, rain mixing ratios, modified potential temperature,
     !tendency of coupled potential temperature, and potential temperature heating rate from microphysics:
     qv(k,i) = qv_p(i,k,j)
-    theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j)) !JHJ
-!changes from Wei
-    if (k.le.56) then
-     qc(k,i) = qc_p(i,k,j)
-     qr(k,i) = qr_p(i,k,j)
-     rt_diabatic_tend(k,i) = (theta_m(k,i) - rt_diabatic_tend(k,i))/dt_dyn
-    else
-      qc(k,i) = 0.
-      qr(k,i) = 0.
-      rt_diabatic_tend(k,i) = 0.
-    endif
-!changes from Wei
+    qc(k,i) = qc_p(i,k,j)
+    qr(k,i) = qr_p(i,k,j)
 
-    !theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j)) !JHJ
+    theta_m(k,i) = th_p(i,k,j) * (1._RKIND+rvord*qv_p(i,k,j))
+    rt_diabatic_tend(k,i) = (theta_m(k,i) - rt_diabatic_tend(k,i))/dt_dyn
     dtheta_dt_mp(k,i)     = (theta_m(k,i)/(1._RKIND+rvord*qv(k,i))-dtheta_dt_mp(k,i))/(dt_dyn)
 
     !density-weighted perturbation potential temperature:
@@ -928,28 +919,15 @@
        do j = jts,jte
        do k = kts,kte
        do i = its,ite
-!changes from Wei
-          if (k.le.56) then
-           qi(k,i) = qi_p(i,k,j)
-           qs(k,i) = qs_p(i,k,j)
-           qg(k,i) = qg_p(i,k,j)
-           rainprod(k,i) = rainprod_p(i,k,j)
-           evapprod(k,i) = evapprod_p(i,k,j)
-           re_cloud(k,i) = recloud_p(i,k,j)
-           re_ice(k,i)   = reice_p(i,k,j)
-           re_snow(k,i)  = resnow_p(i,k,j)
-         else
-          qi(k,i) = 0.
-          qs(k,i) = 0.
-          qg(k,i) = 0.
+          qi(k,i) = qi_p(i,k,j)
+          qs(k,i) = qs_p(i,k,j)
+          qg(k,i) = qg_p(i,k,j)
 
-          rainprod(k,i) = 0.
-          evapprod(k,i) = 0.
-          re_cloud(k,i) = re_qc_bg
-          re_ice(k,i)   = re_qi_bg
-          re_snow(k,i)  = re_qs_bg
-         endif
-!changes from Wei
+          rainprod(k,i) = rainprod_p(i,k,j)
+          evapprod(k,i) = evapprod_p(i,k,j)
+          re_cloud(k,i) = recloud_p(i,k,j)
+          re_ice(k,i)   = reice_p(i,k,j)
+          re_snow(k,i)  = resnow_p(i,k,j)
        enddo
        enddo
        enddo
@@ -1017,25 +995,13 @@
 
        do k = kts,kte
        do i = its,ite
-!changes from Wei
-          if (k.le.56) then
-           rthmpten(k,i) = (theta_m(k,i)/(1._RKIND+R_v/R_d*max(0._RKIND,qv(k,i)))-rthmpten(k,i))/dt_dyn
-           rqvmpten(k,i) = (qv(k,i)-rqvmpten(k,i))/dt_dyn
-           rqcmpten(k,i) = (qc(k,i)-rqcmpten(k,i))/dt_dyn
-           rqrmpten(k,i) = (qr(k,i)-rqrmpten(k,i))/dt_dyn
-           rqimpten(k,i) = (qi(k,i)-rqimpten(k,i))/dt_dyn
-           rqsmpten(k,i) = (qs(k,i)-rqsmpten(k,i))/dt_dyn
-           rqgmpten(k,i) = (qg(k,i)-rqgmpten(k,i))/dt_dyn
-          else
-           rthmpten(k,i) = 0.
-           rqvmpten(k,i) = 0.
-           rqcmpten(k,i) = 0.
-           rqrmpten(k,i) = 0.
-           rqimpten(k,i) = 0.
-           rqsmpten(k,i) = 0.
-           rqgmpten(k,i) = 0.
-          endif
-!changes from Wei
+          rthmpten(k,i) = (theta_m(k,i)/(1._RKIND+R_v/R_d*max(0._RKIND,qv(k,i)))-rthmpten(k,i))/dt_dyn
+          rqvmpten(k,i) = (qv(k,i)-rqvmpten(k,i))/dt_dyn
+          rqcmpten(k,i) = (qc(k,i)-rqcmpten(k,i))/dt_dyn
+          rqrmpten(k,i) = (qr(k,i)-rqrmpten(k,i))/dt_dyn
+          rqimpten(k,i) = (qi(k,i)-rqimpten(k,i))/dt_dyn
+          rqsmpten(k,i) = (qs(k,i)-rqsmpten(k,i))/dt_dyn
+          rqgmpten(k,i) = (qg(k,i)-rqgmpten(k,i))/dt_dyn
        enddo
        enddo
 
