@@ -2821,6 +2821,9 @@ module init_atm_cases
       logical :: too_many_fg_levs
       integer :: level_value
 
+!     to make smoothing consistent between the 30-km- and 70-km-top runs
+      real (kind=RKIND) :: zt_smooth
+
       ! For outputting surface fields u10, v10, q2, rh2, and t2m from first-guess data
       real (kind=RKIND), dimension(:), pointer :: q2
       real (kind=RKIND), dimension(:), pointer :: rh2
@@ -3237,6 +3240,9 @@ module init_atm_cases
 
       if (smooth) then
 
+!        to make smoothing consistent between the 30-km- and 70-km-top runs
+         zt_smooth = 30000.0_RKIND
+
          dzmin = config_dzmin
 
          allocate(sm0(nCells+1))
@@ -3257,7 +3263,9 @@ module init_atm_cases
             do i=1,config_nsm + k
                do iCell=1,nCells
 
-                  sm = sm0(iCell) * min((3.0*zw(k)/zt)**2.0, 1.0_RKIND)
+                  ! to make smoothing consistent between the 30-km- and 70-km-top runs
+                  !sm = sm0(iCell) * min((3.0*zw(k)/zt)**2.0, 1.0_RKIND) !org
+                  sm = sm0(iCell) * min((3.0*zw(k)/zt_smooth)**2.0, 1.0_RKIND)
 
                   hs1(iCell) = 0.
                   do j = 1,nEdgesOnCell(iCell)
