@@ -1599,6 +1599,9 @@
                 <var name="nearestRelaxationCell" type="integer" dimensions="nCells" units="-"
                      description="For cells in the specified zone, gives the index of the nearest cell in the relaxation zone"/>
 
+                <var name="mp_top_level" type="integer" dimensions="" units="-"
+                     description="Vertical layer above which microphysics tendency is ignored"/>
+
         </var_struct>
 
         <var_struct name="state" time_levs="2">
@@ -2214,6 +2217,11 @@
                      units="-"
                      description="number of microphysics time-steps per physics time-steps"
                      possible_values="Positive integers"/>
+
+                <nml_option name="config_microphysics_top" type="real" default_value="45000." in_defaults="false"
+                     units="m"
+                     description="height above which to exclude microphysics tendencies"
+                     possible_values="Positive reals"/>
 
                 <nml_option name="config_radtlw_interval" type="character" default_value="00:30:00"
                      units="-"
