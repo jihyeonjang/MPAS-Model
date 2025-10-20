@@ -292,6 +292,27 @@
                      units="-"
                      description="Number of layers in which to apply Rayleigh damping on horizontal velocity at top of model; damping linearly ramps to zero by layer number from the top"
                      possible_values="Positive integer values"/>
+
+                <nml_option name="config_epssm_minimum" type="real" default_value="0.1"
+                     units="-"
+                     description="Value of epssm below transition zone"
+                     possible_values="Positive real values between 0 and 1"/>
+
+                <nml_option name="config_epssm_maximum" type="real" default_value="0.5"
+                     units="-"
+                     description="Value of epssm above transition zone"
+                     possible_values="Positive real values between 0 and 1"/>
+
+                <nml_option name="config_epssm_transition_bottom_z" type="real" default_value="30000."
+                     units="m"
+                     description="Height MSL of bottom of transition zone for epssm"
+                     possible_values="Positive real values"/>
+
+                <nml_option name="config_epssm_transition_top_z" type="real" default_value="50000."
+                     units="m"
+                     description="Height MSL of top of transition zone for epssm"
+                     possible_values="Positive real values"/>
+
         </nml_record>
 
         <nml_record name="limited_area" in_defaults="true">
@@ -495,6 +516,10 @@
 			<var name="defc_a"/>
 			<var name="defc_b"/>
 			<var name="coeffs_reconstruct"/>
+			<var name="etp"/>
+			<var name="etm"/>
+			<var name="ewp"/>
+			<var name="ewm"/>
 #ifdef MPAS_CAM_DYCORE
 			<var name="cell_gradient_coef_x"/>
 			<var name="cell_gradient_coef_y"/>
@@ -1483,6 +1508,18 @@
 
                 <var name="rdzw" type="real" dimensions="nVertLevels" units="unitless"
                      description="Reciprocal dzw"/>
+
+                <var name="etp" type="real" dimensions="nVertLevels" units="unitless"
+                     description="etp = (1+epssm(z))/2 at theta point"/>
+
+                <var name="etm" type="real" dimensions="nVertLevels" units="unitless"
+                     description="etm = (1-epssm(z))/2 at theta point"/>
+
+                <var name="ewp" type="real" dimensions="nVertLevelsP1" units="unitless"
+                     description="ewp = (1+epssm(z))/2 at w point"/>
+
+                <var name="ewm" type="real" dimensions="nVertLevelsP1" units="unitless"
+                     description="ewm = (1-epssm(z))/2 at w point"/>
 
                 <var name="dzu" type="real" dimensions="nVertLevels" units="unitless"
                      description="d(zeta) at w levels"/>
