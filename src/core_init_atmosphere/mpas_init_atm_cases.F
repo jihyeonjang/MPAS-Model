@@ -2761,6 +2761,8 @@ module init_atm_cases
       integer, pointer :: config_nsm
       real (kind=RKIND), pointer :: config_dzmin
       real (kind=RKIND), pointer :: config_ztop
+      logical          , pointer  :: config_hybrid_coordinate
+      real (kind=RKIND), pointer  :: config_hybrid_top_z
       logical, pointer :: config_tc_vertical_grid
       character (len=StrKIND), pointer :: config_specified_zeta_levels
       logical, pointer :: config_use_spechumd
@@ -2837,6 +2839,8 @@ module init_atm_cases
       call mpas_pool_get_config(configs, 'config_nsm', config_nsm)
       call mpas_pool_get_config(configs, 'config_dzmin', config_dzmin)
       call mpas_pool_get_config(configs, 'config_ztop', config_ztop)
+      call mpas_pool_get_config(configs, 'config_hybrid_coordinate'             , config_hybrid_coordinate)
+      call mpas_pool_get_config(configs, 'config_hybrid_top_z'                  , config_hybrid_top_z)
       call mpas_pool_get_config(configs, 'config_tc_vertical_grid', config_tc_vertical_grid)
       call mpas_pool_get_config(configs, 'config_specified_zeta_levels', config_specified_zeta_levels)
       call mpas_pool_get_config(configs, 'config_use_spechumd', config_use_spechumd)
@@ -3155,38 +3159,36 @@ module init_atm_cases
 !           ah(k) = 1.-zw(k)/zt is the basic terrain-following coordinate
 !           ah(k) = 0           is a height coordinate
  
-      hybrid = .true.
-!      hybrid = .false.
-
       kz = nz
-      if (hybrid) then
+      if (config_hybrid_coordinate) then
       
-         zh = 30000.0
-!         zh = 0.5*zt
-
+         zh = config_hybrid_top_z
          do k=1,nz
             if (zw(k) < zh) then
                ah(k) = cos(.5*pii*zw(k)/zh)**6
-
-!!!               ah(k) = ah(k)*(1.-zw(k)/zt)
-
             else
                ah(k) = 0.
                kz = min(kz,k)
             end if
          end do
+         call mpas_log_write('Hybrid vertical coordinate is used.  Transition height, ztop are $r $r ',realArgs=(/config_hybrid_top_z,zt/))
 
       else
 
+         zh = zt
          do k=1,nz
             ah(k) = 1.-zw(k)/zt
          end do
+         call mpas_log_write('Hybrid vertical coordinate is not selected.  ztop is ',realArgs=(/zt/))
 
       end if
 
+      call mpas_log_write(' ')
+      call mpas_log_write(' interface k, height, ah value ')
       do k=1,nz
          call mpas_log_write('$i $r $r', intArgs=(/k/), realArgs=(/zw(k), ah(k)/))
       end do
+      call mpas_log_write(' ')
 
       do k=1,nz1
          dzw (k) = zw(k+1)-zw(k)
@@ -3237,6 +3239,12 @@ module init_atm_cases
 
       if (smooth) then
 
+         call mpas_log_write(' ')
+         call mpas_log_write(' surfaces will be smoothed, dzmin = $r ',realArgs=(/config_dzmin/))
+         call mpas_log_write(' base number of smoothing passes = $i ',intArgs=(/config_nsm/))
+         call mpas_log_write(' ')
+         call mpas_log_write(' level, smoothing steps, smoothing factor, smallest fractional dz ')
+
          dzmin = config_dzmin
 
          allocate(sm0(nCells+1))
@@ -3257,7 +3265,7 @@ module init_atm_cases
             do i=1,config_nsm + k
                do iCell=1,nCells
 
-                  sm = sm0(iCell) * min((3.0*zw(k)/zt)**2.0, 1.0_RKIND)
+                  sm = sm0(iCell) * min((3.0*zw(k)/zh)**2.0, 1.0_RKIND)
 
                   hs1(iCell) = 0.
                   do j = 1,nEdgesOnCell(iCell)
@@ -3302,7 +3310,8 @@ module init_atm_cases
             call mpas_dmpar_min_real(dminfo, dzminf, dzminf_global)
             call mpas_log_write('$i $i $r $r', intArgs=(/k,i/), realArgs=(/sm,dzminf_global/(zw(k)-zw(k-1))/))
          end do
-
+         call mpas_log_write(' ')
+         
          deallocate(sm0)
 
          do k=kz,nz
@@ -3311,10 +3320,15 @@ module init_atm_cases
 
       else
 
+         call mpas_log_write(' ')
+         call mpas_log_write(' surfaces are not smoothed ')
+         call mpas_log_write(' level, smallest fractional dz ')
+
          do k=2,nz1
             dzmina = minval(zw(k)+ah(k)*hx(k,:)-zw(k-1)-ah(k-1)*hx(k-1,:))
             call mpas_log_write('$i $r', intArgs=(/k/), realArgs=(/dzmina/(zw(k)-zw(k-1))/))
          end do
+         call mpas_log_write(' ')
 
       end if
 

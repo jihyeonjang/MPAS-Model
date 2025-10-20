@@ -260,6 +260,16 @@
                      description="Whether to blend terrain along domain boundaries with first-guess terrain. Only useful for limited-area domains."
                      possible_values="true or false"/>
 
+	        <nml_option name="config_hybrid_coordinate"       type="logical"       default_value="true"
+                     units="-"
+                     description="Whether to employ a hybric vertical cooordinate"
+                     possible_values="true or false"/>
+
+		<nml_option name="config_hybrid_top_z"       type="real"       default_value="30000."
+                     units="-"
+                     description="Height at which coordinate surfaces become constant height surfaces"
+                     possible_values="Positive real values"/>
+
         </nml_record>
 
         <nml_record name="interpolation_control" in_defaults="true">
