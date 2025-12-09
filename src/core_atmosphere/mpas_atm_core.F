@@ -1253,6 +1253,11 @@ module atm_core
       real (kind=RKIND), dimension(:), pointer :: meshDensity
       real (kind=RKIND) :: dx_scale_power
 
+      real (kind=RKIND), dimension(:), pointer :: rdzw, etp, etm, ewp, ewm
+      real (kind=RKIND), pointer  :: max_coeff, min_coeff, transition_lower_bound, transition_upper_bound
+      real (kind=RKIND)  ::  transition_width 
+      real (kind=RKIND), allocatable, dimension(:) :: height_u_levels, epssm_coeff_u, height_w_levels, epssm_coeff_w
+
       m1 = -1.0
       pii = acos(m1)
 
@@ -1278,6 +1283,73 @@ module atm_core
             end if
          end do
       end do
+
+      call mpas_pool_get_array(mesh, 'rdzw', rdzw)
+      call mpas_pool_get_array(mesh, 'etp', etp)
+      call mpas_pool_get_array(mesh, 'etm', etm)
+      call mpas_pool_get_array(mesh, 'ewp', ewp)
+      call mpas_pool_get_array(mesh, 'ewm', ewm)
+      call mpas_pool_get_config(configs, 'config_epssm_minimum', min_coeff)
+      call mpas_pool_get_config(configs, 'config_epssm_maximum', max_coeff)
+      call mpas_pool_get_config(configs, 'config_epssm_transition_bottom_z', transition_lower_bound)
+      call mpas_pool_get_config(configs, 'config_epssm_transition_top_z', transition_upper_bound)
+
+      allocate(height_u_levels(nVertLevels))
+      allocate(epssm_coeff_u(nVertLevels))
+      allocate(height_w_levels(nVertLevels+1))
+      allocate(epssm_coeff_w(nVertLevels+1))
+
+      transition_width = transition_upper_bound - transition_lower_bound
+
+! initialization for heights of coordinate at u and w levels  
+! These are the heights of the computational coordinate zeta
+      
+      height_w_levels(:) = 0.0_RKIND
+      do k =1, nVertLevels
+        height_w_levels(k+1) = height_w_levels(k) + 1.0_RKIND/rdzw(k)
+        height_u_levels(k) = 0.5*(height_w_levels(k+1) + height_w_levels(k)) 
+      enddo
+ 
+! Height dependent values of epssm; profiles stored in etp, etm, ewp, and ewm, 
+
+      call mpas_log_write(' setting epssm coefficients ')
+      call mpas_log_write(' minimum epssm: $r ',realArgs=(/min_coeff/))
+      call mpas_log_write(' maximum epssm: $r ',realArgs=(/max_coeff/))
+      call mpas_log_write(' transition lower bound (m): $r ',realArgs=(/transition_lower_bound/))
+      call mpas_log_write(' transition upper bound (m): $r ',realArgs=(/transition_upper_bound/))
+      call mpas_log_write(' ')
+
+      do k = 1,nVertLevels
+         if(height_u_levels(k).le.transition_lower_bound) then
+            epssm_coeff_u(k) = min_coeff
+         else if(height_u_levels(k).ge.transition_upper_bound)  then
+            epssm_coeff_u(k) = max_coeff
+         else   
+            z = (height_u_levels(k)-transition_lower_bound)/transition_width
+            epssm_coeff_u(k) = min_coeff + sin(0.5_RKIND*pii*z)**2*(max_coeff-min_coeff)
+         end if 
+         etp(k) = 0.5*(1.0 + epssm_coeff_u(k)) 
+         etm(k) = 0.5*(1.0 - epssm_coeff_u(k))
+         call mpas_log_write('k, etp, etm $i $r $r ',intArgs=(/k/),realArgs=(/etp(k),etm(k)/))
+      end do
+      do k= 1,nVertlevels+1
+         if(height_w_levels(k).le.transition_lower_bound) then
+            epssm_coeff_w(k) = min_coeff
+         else if(height_w_levels(k).ge.transition_upper_bound)  then
+            epssm_coeff_w(k) = max_coeff
+         else   
+            z = (height_w_levels(k)-transition_lower_bound)/transition_width
+            epssm_coeff_w(k) = min_coeff + sin(0.5_RKIND*pii*z)**2*(max_coeff-min_coeff)
+         end if 
+         ewp(k) = 0.5*(1.0 + epssm_coeff_w(k)) 
+         ewm(k) = 0.5*(1.0 - epssm_coeff_w(k)) 
+         call mpas_log_write('k, ewp, ewm $i $r $r ',intArgs=(/k/),realArgs=(/ewp(k),ewm(k)/))
+      end do
+
+      deallocate(height_u_levels)
+      deallocate(epssm_coeff_u)
+      deallocate(height_w_levels)
+      deallocate(epssm_coeff_w)
 
    end subroutine atm_compute_damping_coefs
 

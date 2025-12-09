@@ -2177,10 +2177,16 @@ module atm_time_integration
 
       real (kind=RKIND), pointer :: epssm
 
+      ! variable epssm arrays
+      real (kind=RKIND), dimension(:), pointer :: etp, etm, ewp, ewm
+
       integer, pointer :: nCells, moist_start, moist_end
 
-
       call mpas_pool_get_config(configs, 'config_epssm', epssm)
+      call mpas_pool_get_array(mesh, 'etp', etp)
+      call mpas_pool_get_array(mesh, 'etm', etm)
+      call mpas_pool_get_array(mesh, 'ewp', ewp)
+      call mpas_pool_get_array(mesh, 'ewm', ewm)
 
       call mpas_pool_get_array(mesh, 'rdzu', rdzu)
       call mpas_pool_get_array(mesh, 'rdzw', rdzw)
@@ -2215,6 +2221,7 @@ module atm_time_integration
       call atm_compute_vert_imp_coefs_work(nCells, moist_start, moist_end, dts, epssm, &
                                    zz, cqw, p, t, rb, rtb, pb, rt, cofwr, cofwz, coftz, cofwt, &
                                    a_tri, alpha_tri, gamma_tri, cofrz, rdzw, fzm, fzp, rdzu, scalars, &
+                                   etp, etm, ewp, ewm, &
                                    cellStart, cellEnd, edgeStart, edgeEnd, &
                                    cellSolveStart, cellSolveEnd, edgeSolveStart, edgeSolveEnd)
 
@@ -2225,6 +2232,7 @@ module atm_time_integration
    subroutine atm_compute_vert_imp_coefs_work(nCells, moist_start, moist_end, dts, epssm, &
                                    zz, cqw, p, t, rb, rtb, pb, rt, cofwr, cofwz, coftz, cofwt, &
                                    a_tri, alpha_tri, gamma_tri, cofrz, rdzw, fzm, fzp, rdzu, scalars, &
+                                   etp, etm, ewp, ewm, &
                                    cellStart, cellEnd, edgeStart, edgeEnd, &
                                    cellSolveStart, cellSolveEnd, edgeSolveStart, edgeSolveEnd)
 
@@ -2260,6 +2268,8 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels) :: fzm
       real (kind=RKIND), dimension(nVertLevels) :: fzp
       real (kind=RKIND), dimension(nVertLevels) :: rdzu
+      real (kind=RKIND), dimension(nVertLevels  ) :: etp,etm
+      real (kind=RKIND), dimension(nVertLevels+1) :: ewp,ewm
       real (kind=RKIND), dimension(num_scalars,nVertLevels,nCells+1) :: scalars
 
       integer, intent(in) :: cellStart, cellEnd, edgeStart, edgeEnd
@@ -2280,7 +2290,7 @@ module atm_time_integration
       MPAS_ACC_TIMER_STOP('atm_compute_vert_imp_coefs_work [ACC_data_xfer]')
 
       !  set coefficients
-      dtseps = .5*dts*(1.+epssm)
+      !  dtseps = .5*dts*(1.+epssm) ! not needed for epssm_z
       rcv = rgas/(cp-rgas)
       c2 = cp*rcv
 
@@ -2288,7 +2298,8 @@ module atm_time_integration
       !$acc loop gang worker
 ! MGD bad to have all threads setting this variable?
       do k=1,nVertLevels
-         cofrz(k) = dtseps*rdzw(k)
+         ! cofrz(k) = dtseps*rdzw(k)
+         cofrz(k) = rdzw(k)  ! epssm_z_change
       end do
       !$acc end parallel
 
@@ -2299,15 +2310,21 @@ module atm_time_integration
 !DIR$ IVDEP
          !$acc loop vector
          do k=2,nVertLevels
-            cofwr(k,iCell) =.5*dtseps*gravity*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))
+            ! cofwr(k,iCell) =.5*dtseps*gravity*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))
+            cofwr(k,iCell) =.5*gravity*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))  ! epssm_z_change
          end do
          coftz(1,iCell) = 0.0
 !DIR$ IVDEP
          !$acc loop vector
          do k=2,nVertLevels
-            cofwz(k,iCell) = dtseps*c2*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))  &
+            ! cofwz(k,iCell) = dtseps*c2*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))  &
+            !      *rdzu(k)*cqw(k,iCell)*(fzm(k)*p (k,iCell)+fzp(k)*p (k-1,iCell))
+            ! coftz(k,iCell) = dtseps*   (fzm(k)*t (k,iCell)+fzp(k)*t (k-1,iCell))
+
+            ! ! epssm_z_change
+            cofwz(k,iCell) = c2*(fzm(k)*zz(k,iCell)+fzp(k)*zz(k-1,iCell))  &
                  *rdzu(k)*cqw(k,iCell)*(fzm(k)*p (k,iCell)+fzp(k)*p (k-1,iCell))
-            coftz(k,iCell) = dtseps*   (fzm(k)*t (k,iCell)+fzp(k)*t (k-1,iCell))
+            coftz(k,iCell) =  (fzm(k)*t (k,iCell)+fzp(k)*t (k-1,iCell))
          end do
          coftz(nVertLevels+1,iCell) = 0.0
 !DIR$ IVDEP
@@ -2320,9 +2337,14 @@ module atm_time_integration
 !            end do
             qtotal = qtot(k,iCell)
 
-            cofwt(k,iCell) = .5*dtseps*rcv*zz(k,iCell)*gravity*rb(k,iCell)/(1.+qtotal)  &
+            ! cofwt(k,iCell) = .5*dtseps*rcv*zz(k,iCell)*gravity*rb(k,iCell)/(1.+qtotal)  &
+            !                     *p(k,iCell)/((rtb(k,iCell)+rt(k,iCell))*pb(k,iCell))
+
+            ! epssm_z_change
+            cofwt(k,iCell) = .5*rcv*zz(k,iCell)*gravity*rb(k,iCell)/(1.+qtotal)  &
                                 *p(k,iCell)/((rtb(k,iCell)+rt(k,iCell))*pb(k,iCell))
-!            cofwt(k,iCell) = 0.
+            ! cofwt(k,iCell) = .5*rcv*zz(k,iCell)*gravity/t(k,iCell) ! zero base state option
+            ! cofwt(k,iCell) = 0.
          end do
 
          a_tri(1,iCell) = 0.  ! note, this value is never used
@@ -2337,21 +2359,38 @@ module atm_time_integration
             a_tri(k,iCell) = -cofwz(k  ,iCell)* coftz(k-1,iCell)*rdzw(k-1)*zz(k-1,iCell)   &
                          +cofwr(k  ,iCell)* cofrz(k-1  )                       &
                          -cofwt(k-1,iCell)* coftz(k-1,iCell)*rdzw(k-1)
-            b_tri(k) = 1.                                                  &
-                         +cofwz(k  ,iCell)*(coftz(k  ,iCell)*rdzw(k  )*zz(k  ,iCell)   &
-                                      +coftz(k  ,iCell)*rdzw(k-1)*zz(k-1,iCell))   &
-                         -coftz(k  ,iCell)*(cofwt(k  ,iCell)*rdzw(k  )             &
-                                       -cofwt(k-1,iCell)*rdzw(k-1))            &
-                         +cofwr(k,  iCell)*(cofrz(k    )-cofrz(k-1))
+            a_tri(k,iCell) = a_tri(k,iCell)*etp(k-1)*ewp(k-1) ! epssm_z_change (addition)
+
+            ! b_tri(k) = 1.                                                  &
+            !              +cofwz(k  ,iCell)*(coftz(k  ,iCell)*rdzw(k  )*zz(k  ,iCell)   &
+            !                           +coftz(k  ,iCell)*rdzw(k-1)*zz(k-1,iCell))   &
+            !              -coftz(k  ,iCell)*(cofwt(k  ,iCell)*rdzw(k  )             &
+            !                            -cofwt(k-1,iCell)*rdzw(k-1))            &
+            !              +cofwr(k,  iCell)*(cofrz(k    )-cofrz(k-1))
+
+            ! epssm_z_change
+            b_tri(k) =   +cofwz(k  ,iCell)*coftz(k,iCell)*                           &
+                             ( etp(k  )*rdzw(k  )*zz(k  ,iCell)                      &
+                              +etp(k-1)*rdzw(k-1)*zz(k-1,iCell))                     &
+                         -coftz(k  ,iCell)*( etp(k  )*cofwt(k  ,iCell)*rdzw(k  )     &
+                                            -etp(k-1)*cofwt(k-1,iCell)*rdzw(k-1))    &
+                         +cofwr(k,  iCell)*(etp(k)*cofrz(k    )-etp(k-1)*cofrz(k-1))                                                            
+            b_tri(k) =   b_tri(k)*ewp(k)
+
             c_tri(k) =   -cofwz(k  ,iCell)* coftz(k+1,iCell)*rdzw(k  )*zz(k  ,iCell)   &
                          -cofwr(k  ,iCell)* cofrz(k    )                       &
                          +cofwt(k  ,iCell)* coftz(k+1,iCell)*rdzw(k  )
+            c_tri(k) =   c_tri(k)*etp(k)*ewp(k+1) ! epssm_z_change (addition)
          end do
+         c_tri(nVertLevels) = 0.0 ! epssm_z_change (addition)
 !MGD VECTOR DEPENDENCE
          !$acc loop seq
          do k=2,nVertLevels
-            alpha_tri(k,iCell) = 1./(b_tri(k)-a_tri(k,iCell)*gamma_tri(k-1,iCell))
-            gamma_tri(k,iCell) = c_tri(k)*alpha_tri(k,iCell)
+            ! alpha_tri(k,iCell) = 1./(b_tri(k)-a_tri(k,iCell)*gamma_tri(k-1,iCell))
+            ! gamma_tri(k,iCell) = c_tri(k)*alpha_tri(k,iCell)
+            ! epssm_z_change
+            alpha_tri(k,iCell) = 1./(1.0+(dts**2)*(b_tri(k)-a_tri(k,iCell)*gamma_tri(k-1,iCell)))
+            gamma_tri(k,iCell) = (dts**2)*c_tri(k)*alpha_tri(k,iCell)
          end do
 
       end do ! loop over cells
@@ -2561,6 +2600,8 @@ module atm_time_integration
 
       real (kind=RKIND), pointer :: cf1, cf2, cf3
 
+      real (kind=RKIND), dimension(:), pointer :: etp, etm, ewp, ewm
+
       integer, pointer :: nEdges, nCellsSolve
 
       call mpas_pool_get_array(mesh, 'cellsOnEdge', cellsOnEdge)
@@ -2569,6 +2610,11 @@ module atm_time_integration
       call mpas_pool_get_array(mesh, 'edgesOnCell_sign', edgesOnCell_sign)
       call mpas_pool_get_array(mesh, 'specZoneMaskEdge', specZoneMaskEdge)
       call mpas_pool_get_array(mesh, 'specZoneMaskCell', specZoneMaskCell)
+
+      call mpas_pool_get_array(mesh, 'etp', etp)
+      call mpas_pool_get_array(mesh, 'etm', etm)
+      call mpas_pool_get_array(mesh, 'ewp', ewp)
+      call mpas_pool_get_array(mesh, 'ewm', ewm)
 
       call mpas_pool_get_array(state, 'rho_zz', rho_zz, 2)
 !      call mpas_pool_get_array(state, 'theta_m', theta_m, 2)
@@ -2637,6 +2683,7 @@ module atm_time_integration
                                    tend_rw, zgrid, cofwr, cofwz, w, ru, ru_save, rw, rw_save, fzm, fzp, rdzw, dcEdge, invDcEdge, &
                                    invAreaCell, cofrz, dvEdge, nEdgesOnCell, cellsOnEdge, edgesOnCell, edgesOnCell_sign, &
                                    dts, small_step, epssm, cf1, cf2, cf3, &
+                                   etp, etm, ewp, ewm,    &
                                    specZoneMaskEdge, specZoneMaskCell &
                                    )
 
@@ -2650,6 +2697,7 @@ module atm_time_integration
                                    tend_rw, zgrid, cofwr, cofwz, w, ru, ru_save, rw, rw_save, fzm, fzp, rdzw, dcEdge, invDcEdge, &
                                    invAreaCell, cofrz, dvEdge, nEdgesOnCell, cellsOnEdge, edgesOnCell, edgesOnCell_sign, &
                                    dts, small_step, epssm, cf1, cf2, cf3, &
+                                   etp, etm, ewp, ewm,    &
                                    specZoneMaskEdge, specZoneMaskCell &
                                    )
 
@@ -2703,6 +2751,10 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels) :: fzm
       real (kind=RKIND), dimension(nVertLevels) :: fzp
       real (kind=RKIND), dimension(nVertLevels) :: rdzw
+      real (kind=RKIND), dimension(nVertLevels  ) :: etp
+      real (kind=RKIND), dimension(nVertLevels  ) :: etm
+      real (kind=RKIND), dimension(nVertLevels+1) :: ewp
+      real (kind=RKIND), dimension(nVertLevels+1) :: ewm
       real (kind=RKIND), dimension(nEdges+1) :: dcEdge
       real (kind=RKIND), dimension(nEdges+1) :: invDcEdge
       real (kind=RKIND), dimension(nCells+1) :: invAreaCell
@@ -2888,31 +2940,51 @@ module atm_time_integration
 !DIR$ IVDEP
             !$acc loop vector
             do k=1, nVertLevels
-               rs(k) = rho_pp(k,iCell) + dts*tend_rho(k,iCell) + rs(k)              &
-                               - cofrz(k)*resm*(rw_p(k+1,iCell)-rw_p(k,iCell))
-               ts(k) = rtheta_pp(k,iCell) + dts*tend_rt(k,iCell) + ts(k)            &
-                                  - resm*rdzw(k)*( coftz(k+1,iCell)*rw_p(k+1,iCell) &
-                                                  -coftz(k,iCell)*rw_p(k,iCell))
+               ! rs(k) = rho_pp(k,iCell) + dts*tend_rho(k,iCell) + rs(k)              &
+               !                 - cofrz(k)*resm*(rw_p(k+1,iCell)-rw_p(k,iCell))
+               ! ts(k) = rtheta_pp(k,iCell) + dts*tend_rt(k,iCell) + ts(k)            &
+               !                    - resm*rdzw(k)*( coftz(k+1,iCell)*rw_p(k+1,iCell) &
+               !                                    -coftz(k,iCell)*rw_p(k,iCell))
+
+               ! epssm_z change
+               rs(k) = rho_pp(k,iCell) + dts*tend_rho(k,iCell) + rs(k)                  &
+                               - dts*cofrz(k)*(ewm(k+1)*rw_p(k+1,iCell)-ewm(k)*rw_p(k,iCell))
+               ts(k) = rtheta_pp(k,iCell) + dts*tend_rt(k,iCell) + ts(k)                &
+                                       - dts*rdzw(k)*( ewm(k+1)*coftz(k+1,iCell)*rw_p(k+1,iCell) &
+                                                      -ewm(k  )*coftz(k,iCell)*rw_p(k,iCell))
             end do
 
 !DIR$ IVDEP
             !$acc loop vector
             do k=2, nVertLevels
-               wwAvg(k,iCell) = wwAvg(k,iCell) + 0.5*(1.0-epssm)*rw_p(k,iCell)
+               !  wwAvg(k,iCell) = wwAvg(k,iCell) + 0.5*(1.0-epssm)*rw_p(k,iCell)
+               wwavg(k,iCell) = wwavg(k,iCell) + ewm(k)*rw_p(k,iCell)  ! epssm_z change
             end do
 
 !DIR$ IVDEP
             !$acc loop vector
             do k=2, nVertLevels
-               rw_p(k,iCell) = rw_p(k,iCell) +  dts*tend_rw(k,iCell)                 &
-                          - cofwz(k,iCell)*((zz(k  ,iCell)*ts(k)                     &
-                                        -zz(k-1,iCell)*ts(k-1))                      &
-                                  +resm*(zz(k  ,iCell)*rtheta_pp(k  ,iCell)          &
-                                        -zz(k-1,iCell)*rtheta_pp(k-1,iCell)))        &
-                          - cofwr(k,iCell)*((rs(k)+rs(k-1))                          &
-                                  +resm*(rho_pp(k,iCell)+rho_pp(k-1,iCell)))         &
-                          + cofwt(k  ,iCell)*(ts(k  )+resm*rtheta_pp(k  ,iCell))     &
-                          + cofwt(k-1,iCell)*(ts(k-1)+resm*rtheta_pp(k-1,iCell))
+               ! rw_p(k,iCell) = rw_p(k,iCell) +  dts*tend_rw(k,iCell)                 &
+               !            - cofwz(k,iCell)*((zz(k  ,iCell)*ts(k)                     &
+               !                          -zz(k-1,iCell)*ts(k-1))                      &
+               !                    +resm*(zz(k  ,iCell)*rtheta_pp(k  ,iCell)          &
+               !                          -zz(k-1,iCell)*rtheta_pp(k-1,iCell)))        &
+               !            - cofwr(k,iCell)*((rs(k)+rs(k-1))                          &
+               !                    +resm*(rho_pp(k,iCell)+rho_pp(k-1,iCell)))         &
+               !            + cofwt(k  ,iCell)*(ts(k  )+resm*rtheta_pp(k  ,iCell))     &
+               !            + cofwt(k-1,iCell)*(ts(k-1)+resm*rtheta_pp(k-1,iCell))
+
+               ! epssm_z change
+               rw_p(k,iCell) = rw_p(k,iCell) +  dts*(tend_rw(k,iCell)                          &
+                          - cofwz(k,iCell)*(( etp(k  )*zz(k  ,iCell)*ts(k)                     &
+                                             -etp(k-1)*zz(k-1,iCell)*ts(k-1))                  &
+                                    + ( etm(k  )*zz(k  ,iCell)*rtheta_pp(k  ,iCell)            &
+                                       -etm(k-1)*zz(k-1,iCell)*rtheta_pp(k-1,iCell)))          &
+                          - cofwr(k,iCell)*((etp(k)*rs(k)+etp(k-1)*rs(k-1))                    &
+                                           +( etm(k  )*rho_pp(k  ,iCell)                       &
+                                             +etm(k-1)*rho_pp(k-1,iCell)))                     &
+                          + cofwt(k  ,iCell)*(etp(k  )*ts(k  )+etm(k  )*rtheta_pp(k  ,iCell))  &
+                          + cofwt(k-1,iCell)*(etp(k-1)*ts(k-1)+etm(k-1)*rtheta_pp(k-1,iCell)))
             end do
 
             ! tridiagonal solve sweeping up and then down the column
@@ -2920,7 +2992,10 @@ module atm_time_integration
 !MGD VECTOR DEPENDENCE
             !$acc loop seq
             do k=2,nVertLevels
-               rw_p(k,iCell) = (rw_p(k,iCell)-a_tri(k,iCell)*rw_p(k-1,iCell))*alpha_tri(k,iCell)
+               !  rw_p(k,iCell) = (rw_p(k,iCell)-a_tri(k,iCell)*rw_p(k-1,iCell))*alpha_tri(k,iCell)
+
+               !  epssm_z change
+               rw_p(k,iCell) = (rw_p(k,iCell)-(dts**2)*a_tri(k,iCell)*rw_p(k-1,iCell))*alpha_tri(k,iCell)
             end do
 
 !MGD VECTOR DEPENDENCE
@@ -2945,7 +3020,8 @@ module atm_time_integration
 !DIR$ IVDEP
             !$acc loop vector
             do k=2,nVertLevels
-               wwAvg(k,iCell) = wwAvg(k,iCell) + 0.5*(1.0+epssm)*rw_p(k,iCell)
+               ! wwAvg(k,iCell) = wwAvg(k,iCell) + 0.5*(1.0+epssm)*rw_p(k,iCell)
+               wwAvg(k,iCell) = wwAvg(k,iCell) + ewp(k)*rw_p(k,iCell)  ! epssm_z change
             end do
 
             ! update rho_pp and theta_pp given updated rw_p
@@ -2953,9 +3029,15 @@ module atm_time_integration
 !DIR$ IVDEP
             !$acc loop vector
             do k=1,nVertLevels
-               rho_pp(k,iCell) = rs(k) - cofrz(k) *(rw_p(k+1,iCell)-rw_p(k  ,iCell))
-               rtheta_pp(k,iCell) = ts(k) - rdzw(k)*(coftz(k+1,iCell)*rw_p(k+1,iCell)  &
-                                  -coftz(k  ,iCell)*rw_p(k  ,iCell))
+               ! rho_pp(k,iCell) = rs(k) - cofrz(k) *(rw_p(k+1,iCell)-rw_p(k  ,iCell))
+               ! rtheta_pp(k,iCell) = ts(k) - rdzw(k)*(coftz(k+1,iCell)*rw_p(k+1,iCell)  &
+               !                    -coftz(k  ,iCell)*rw_p(k  ,iCell))
+               !
+               ! epssm_z change
+               rho_pp(k,iCell) = rs(k) - dts*cofrz(k) *( ewp(k+1)*rw_p(k+1,iCell)  &
+                                                        -ewp(k  )*rw_p(k  ,iCell))
+               rtheta_pp(k,iCell) = ts(k) - dts*rdzw(k)*( ewp(k+1)*coftz(k+1,iCell)*rw_p(k+1,iCell)  &
+                                                         -ewp(k  )*coftz(k  ,iCell)*rw_p(k  ,iCell))
             end do
 
          else ! specifed zone in regional_MPAS
@@ -2965,7 +3047,8 @@ module atm_time_integration
                rho_pp(k,iCell) = rho_pp(k,iCell) + dts*tend_rho(k,iCell)
                rtheta_pp(k,iCell) = rtheta_pp(k,iCell) + dts*tend_rt(k,iCell)
                rw_p(k,iCell) = rw_p(k,iCell) + dts*tend_rw(k,iCell)
-               wwAvg(k,iCell) = wwAvg(k,iCell) + 0.5*(1.0+epssm)*rw_p(k,iCell)
+               ! wwAvg(k,iCell) = wwAvg(k,iCell) + 0.5*(1.0+epssm)*rw_p(k,iCell)
+               wwAvg(k,iCell) = wwAvg(k,iCell) + ewp(k)*rw_p(k,iCell)  ! epssm_z change
             end do
 
          end if
