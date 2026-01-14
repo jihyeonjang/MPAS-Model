@@ -1,5 +1,8 @@
 .SUFFIXES: .F .o
 
+CHEMISTRY = -DDO_CHEMISTRY
+#CHEMISTRY=
+
 #
 # To build a dycore-only MPAS-Atmosphere model, comment-out or delete
 # the definition of PHYSICS, below
@@ -15,16 +18,21 @@ ifdef PHYSICS
     PHYS_OBJS = libphys/*.o
 endif
 
+ifdef CHEMISTRY
+    CHEMCORE = chemcore
+    CHEM_OBJS = libchem/*.o
+endif
+
 OBJS = mpas_atm_core.o \
        mpas_atm_core_interface.o \
        mpas_atm_dimensions.o \
        mpas_atm_threading.o \
        mpas_atm_halos.o
 
-all: $(PHYSCORE) dycore diagcore atmcore utilities
+all: physcore_init $(CHEMCORE) $(PHYSCORE) dycore diagcore atmcore utilities
 
 core_reg:
-	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $(PHYSICS) Registry.xml > Registry_processed.xml
+	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $(PHYSICS) $(CHEMISTRY) Registry.xml > Registry_processed.xml
 
 core_input_gen:
 	if [ ! -e default_inputs ]; then  mkdir default_inputs; fi
@@ -40,6 +48,9 @@ post_build:
 	cp default_inputs/* $(ROOT_DIR)/default_inputs/.
 	( cd $(ROOT_DIR)/default_inputs; for FILE in `ls -1`; do if [ ! -e ../$$FILE ]; then cp $$FILE ../.; fi; done )
 
+physcore_init:
+	(cd physics;  $(MAKE) core_physics_init )
+
 physcore: mpas_atm_dimensions.o
 	( cd physics; $(MAKE) all )
 	( mkdir libphys; cd libphys; ar -x ../physics/libphys.a )
@@ -47,17 +58,21 @@ physcore: mpas_atm_dimensions.o
 	( cd ../..; ln -sf ./src/core_atmosphere/physics/physics_wrf/files/*DATA* .)
 	( cd ../..; ln -sf ./src/core_atmosphere/physics/physics_noahmp/parameters/*TBL .)
 
-dycore: mpas_atm_dimensions.o $(PHYSCORE)
-	( cd dynamics; $(MAKE) all PHYSICS="$(PHYSICS)" )
+chemcore: mpas_atm_dimensions.o physcore_init
+	( cd chemistry; $(MAKE) all )
+	( mkdir libchem; cd libchem; ar -x ../chemistry/libchem.a )
 
-diagcore: $(PHYSCORE) dycore
-	( cd diagnostics; $(MAKE) all PHYSICS="$(PHYSICS)" )
+dycore: mpas_atm_dimensions.o $(CHEMCORE) $(PHYSCORE)
+	( cd dynamics; $(MAKE) all PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)" )
+
+diagcore: $(CHEMCORE) $(PHYSCORE) dycore
+	( cd diagnostics; $(MAKE) all PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)" )
 
 utilities: $(PHYSCORE)
 	( cd utils; $(MAKE) all PHYSICS="$(PHYSICS)" )
 
-atmcore: $(PHYSCORE) dycore diagcore $(OBJS)
-	ar -ru libdycore.a $(OBJS) dynamics/*.o $(PHYS_OBJS) diagnostics/*.o
+atmcore: $(CHEMCORE) $(PHYSCORE) dycore diagcore $(OBJS)
+	ar -ru libdycore.a $(OBJS) dynamics/*.o $(PHYS_OBJS) $(CHEM_OBJS) diagnostics/*.o
 
 mpas_atm_core_interface.o: mpas_atm_core.o
 
@@ -67,12 +82,14 @@ mpas_atm_dimensions.o:
 
 clean:
 	( cd physics; $(MAKE) clean )
+	( cd chemistry; $(MAKE) clean )
 	( cd dynamics; $(MAKE) clean )
 	( cd diagnostics; $(MAKE) clean )
 	( cd utils; $(MAKE) clean )
 	( cd ../..; rm -f *TBL )
 	( cd ../..; rm -f *DATA* )
 	$(RM) -r libphys
+	$(RM) -r libchem
 	$(RM) *.o *.mod *.f90 libdycore.a
 	$(RM) Registry_processed.xml
 	@# Certain systems with intel compilers generate *.i files
@@ -83,8 +100,8 @@ clean:
 .F.o:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
-	$(CPP) $(CPPFLAGS) $(PHYSICS) $(CPPINCLUDES) -I./inc $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators -I./physics -I./dynamics -I./diagnostics -I./physics/physics_wrf -I./physics/physics_mmm -I./physics/physics_noaa/UGWP -I../external/esmf_time_f90
+	$(CPP) $(CPPFLAGS) $(CHEMISTRY) $(PHYSICS) $(CPPINCLUDES) -I./inc $< > $*.f90
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators -I./chemistry -I./physics -I./dynamics -I./diagnostics -I./chemistry/chemistry_opp -I./physics/physics_wrf -I./physics/physics_mmm -I./physics/physics_noaa/UGWP -I../external/esmf_time_f90
 else
-	$(FC) $(CPPFLAGS) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I./inc -I../framework -I../operators -I./physics -I./dynamics -I./diagnostics -I./physics/physics_wrf -I./physics/physics_mmm -I./physics/physics_noaa/UGWP -I../external/esmf_time_f90
+	$(FC) $(CPPFLAGS) $(CHEMISTRY) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I./inc -I../framework -I../operators -I./chemistry -I./physics -I./dynamics -I./diagnostics -I./chemistry/chemistry_opp -I./physics/physics_wrf -I./physics/physics_mmm -I./physics/physics_noaa/UGWP -I../external/esmf_time_f90
 endif

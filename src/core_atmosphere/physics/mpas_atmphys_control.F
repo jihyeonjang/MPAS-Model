@@ -467,15 +467,23 @@
  integer, intent(out) :: ierr
 
  real (kind=RKIND) :: maxvar2d_local, maxvar2d_global
+ real (kind=RKIND) :: maxqo3_local, maxqo3_global
  real (kind=RKIND), dimension(:), pointer :: var2d
+ real (kind=RKIND), dimension(:), pointer :: qo3 !org JHJ
+ !real (kind=RKIND), dimension(:,:), pointer :: qo3
+ real (kind=RKIND), dimension(:,:,:), pointer :: scalars
  integer, pointer :: nCellsSolve
+ integer, pointer :: nVertLevels !JHJ
+ integer, pointer :: index_qo3
  integer, pointer :: iswater_lu
  integer, pointer, dimension(:) :: ivgtyp
  integer :: all_water, iall_water
  character (len=StrKIND), pointer :: gwdo_scheme
+ logical, pointer :: o3prognostic, o3climatology
  type (block_type), pointer :: block
  type (mpas_pool_type), pointer :: meshPool
  type (mpas_pool_type), pointer :: sfc_inputPool
+ type (mpas_pool_type), pointer :: statePool
 
  ierr = 0
 
@@ -529,6 +537,73 @@
      end if
 
  end if
+
+!check compatibility:
+ call mpas_pool_get_config(blocklist % configs, 'config_o3climatology', o3climatology)
+ call mpas_pool_get_config(blocklist % configs, 'config_o3prognostic' , o3prognostic )
+
+ if (o3prognostic) then
+
+     if (o3climatology) then
+         call mpas_log_write(' ')
+         call mpas_log_write('*******************************************************************************', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('The options config_o3prognostic = ''true'' and config_o3climatology = ''true''' , &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('are incompatible. Set one of these two options to ''false''.'                   , &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('*******************************************************************************', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write(' ')
+     end if
+
+     maxqo3_local = -huge(maxqo3_local)
+     block => blockList
+     do while (associated(block))
+         call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
+         call mpas_pool_get_subpool(block % structs, 'state', statePool)
+         call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
+         call mpas_pool_get_dimension(statePool, 'index_qo3', index_qo3)
+         call mpas_pool_get_array(statePool, 'scalars', scalars, 1)
+
+         qo3 => scalars(index_qo3,1,:) !org JHJ
+         !qo3 => scalars(index_qo3,:,1) !JHJ
+         !call mpas_log_write('JHJ before 2D qo3 => scalars ')
+         !qo3 => scalars(index_qo3,:,:)  !JHJ
+         !call mpas_log_write('JHJ after 2D qo3 => scalars ')
+
+         maxqo3_local = max(maxqo3_local, maxval(qo3(1:nCellsSolve))) !org JHJ
+         !maxqo3_local = max(maxqo3_local, maxval(qo3(1:nVertLevels)))  !JHJ
+         !maxqo3_local = max(maxqo3_local, maxval(qo3(1:nVertLevels,1:nCellsSolve)))  !JHJ
+         !maxqo3_local = max(maxqo3_local, maxval(qo3(:,:)))  !JHJ
+         !call mpas_log_write('JHJ after maxval(qo3(1:nVertLevels,1:nCellsSolve)) ')
+
+         block => block % next
+     end do
+
+     call mpas_dmpar_max_real(dminfo, maxqo3_local, maxqo3_global)
+
+     if (maxqo3_global <= 0.0_RKIND) then
+         call mpas_log_write(' ')
+         call mpas_log_write('*******************************************************************************', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('The option config_o3prognostic = ''true'' requires non-zero values of the ozone', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('mixing ratio (qo3), but qo3 is zero everywhere in the model input.'             , &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('Either set config_o3prognostic = ''false'' and config_o3climatology = ''true'' ', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('to run climatological ozone instead in the &physics namelist, or generate qo3'  , &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('with the init_atmosphere core.'                                                 , &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('*******************************************************************************', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write(' ')
+         ierr = ierr + 1
+      end if
+
+  end if
 
  end subroutine physics_compatibility_check
 

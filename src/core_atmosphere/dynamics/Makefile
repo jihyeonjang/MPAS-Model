@@ -19,8 +19,8 @@ clean:
 .F.o:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
-	$(CPP) $(CPPFLAGS) $(PHYSICS) $(CPPINCLUDES) $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../physics -I../physics/physics_wrf -I../physics/physics_mmm -I../../external/esmf_time_f90
+	$(CPP) $(CPPFLAGS) $(CHEMISTRY) $(PHYSICS) $(CPPINCLUDES) $< > $*.f90
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../chemistry -I../physics -I../physics/physics_wrf -I../physics/physics_mmm -I../../external/esmf_time_f90
 else
-	$(FC) $(CPPFLAGS) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../physics -I../physics/physics_wrf -I../physics/physics_mmm -I../../external/esmf_time_f90
+	$(FC) $(CPPFLAGS) $(CHEMISTRY) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../chemistry -I../physics -I../physics/physics_wrf -I../physics/physics_mmm -I../../external/esmf_time_f90
 endif

@@ -1,0 +1,89 @@
+<!-- ========================================================================================================= -->
+<!-- ozone chemistry:                                                                                          -->
+<!-- ========================================================================================================= -->
+
+ <packages>
+      <package name="chem2dopp_in" description="CHEM2D ozone photochemistry parameterization."/>
+ </packages>
+
+
+ <dims>
+      <dim name="nOPPLevels" definition="53"
+           description="The number of levels in the linearized CHEM2D-OPP (McCormack et al.,2006)"/>
+
+      <dim name="nOPPCoeffs" definition="6"
+           description="The number of coefficients in the linearized CHEM2D-OPP (McCormack et al.,2006)"/>
+ </dims>
+
+
+ <var_struct name="state" time_levs="2">
+
+      <var_array name="scalars" type="real" dimensions="nVertLevels nCells Time">
+           <var name="qo3" array_group="passive" units="kg kg^{-1}"
+                description="Ozone mixing ratio"
+                packages="chem2dopp_in"/>
+      </var_array>
+
+ </var_struct>
+
+ 
+ <var_struct name="tend" time_levs="1">
+
+      <var_array name="scalars_tend" type="real" dimensions="nVertLevels nCells Time">
+           <var name="tend_qo3" name_in_code="qo3" array_group="passive" units="kg m^{-3} s^{-1}"
+                description="Tendency of ozone mass per unit volume divided by d(zeta)/dz"
+                packages="chem2dopp_in"/>
+      </var_array>
+
+ </var_struct>
+
+
+ <var_struct name="chem_input" time_levs="1">
+
+      <!-- Monthly mean pressure and coefficients needed in the linearized CHEM2D-OPP: -->
+      <var name="OPPpres" type="real" dimensions="nOPPLevels" units="Pa"
+           description="fixed pressure levels in the linearized CHEM2D-OPP (McCormack et al.,2006)"
+           packages="chem2dopp_in"/>
+
+      <var name="OPPdata" type="real" dimensions="nMonths nOPPCoeffs nOPPLevels nCells" units="various"
+           description="monthly-mean coefficients used in the linearized CHEM2D-OPP (McCormack et al.,2006)"
+           packages="chem2dopp_in"/>
+
+      <!-- Coefficients needed in the linearized CHEM2D-OPP interpolated to the actual timestamp: -->
+      <var name="OPPcoeffs" type="real" dimensions="nOPPCoeffs nOPPLevels nCells Time" units="various"
+           description="coefficients used in the linearized CHEM2D-OPP at the actual timestamp"
+           packages="chem2dopp_in"/>
+
+ </var_struct>
+
+
+ <var_struct name="diag_chemistry" time_levs="1">
+
+      <var name="oppdiag1" type="real" dimensions="nVertLevels nCells Time" units=" "
+           description="diagnostic 1 from the linearized CHEM2D-OPP"
+           packages="chem2dopp_in"/>
+
+      <var name="oppdiag2" type="real" dimensions="nVertLevels nCells Time" units=" "
+           description="diagnostic 2 from the linearized CHEM2D-OPP"
+           packages="chem2dopp_in"/>
+
+      <var name="oppdiag3" type="real" dimensions="nVertLevels nCells Time" units=" "
+           description="diagnostic 3 from the linearized CHEM2D-OPP"
+           packages="chem2dopp_in"/>
+
+      <var name="oppdiag4" type="real" dimensions="nVertLevels nCells Time" units=" "
+           description="diagnostic 4 from the linearized CHEM2D-OPP"
+           packages="chem2dopp_in"/>
+
+ </var_struct>
+
+
+ <var_struct name="tend_chemistry" time_levs="1">
+
+      <var name="qo3oppten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+           description="ozone tendency from the linearized CHEM2D-OPP"
+           packages="chem2dopp_in"/>
+
+ </var_struct>
+
+<!-- ========================================================================================================= -->

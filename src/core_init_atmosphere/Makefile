@@ -12,6 +12,7 @@ OBJS =  \
 	mpas_init_atm_hinterp.o \
 	mpas_init_atm_static.o \
 	mpas_init_atm_gwd.o \
+	mpas_init_atm_o3mr.o \
 	mpas_gsl_oro_data_sm_scale.o \
 	mpas_gsl_oro_data_lg_scale.o \
 	mpas_init_atm_gwd_gsl.o \
@@ -63,6 +64,7 @@ mpas_init_atm_cases.o: \
 	mpas_init_atm_gwd_gsl.o \
 	mpas_init_atm_surface.o \
 	mpas_init_atm_thompson_aerosols.o \
+	mpas_init_atm_o3mr.o \
 	mpas_init_atm_vinterp.o \
 	mpas_atmphys_constants.o \
 	mpas_atmphys_functions.o \
@@ -77,6 +79,12 @@ mpas_init_atm_thompson_aerosols.o: \
 	mpas_init_atm_vinterp.o \
 	mpas_atmphys_date_time.o \
 	mpas_atmphys_utilities.o
+
+mpas_init_atm_o3mr.o: \
+	mpas_init_atm_hinterp.o \
+	mpas_init_atm_llxy.o \
+	mpas_init_atm_read_met.o \
+	mpas_init_atm_vinterp.o
 
 mpas_advection.o: 
 

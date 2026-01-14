@@ -85,6 +85,8 @@
 ! * since we removed the local variable radt_sw_scheme from mpas_atmphys_vars.F, now defines radt_sw_scheme
 !   as a pointer to config_radt_sw_scheme.
 !   Laura D. Fowler (laura@ucar.edu) / 2017-02-16.
+! * in the call to rrtmg_swrad, added the option to input prognostic instead of climatological ozone.
+!   Laura D. Fowler (laura@ucar.edu) / 2021-03-08.
 ! * added the variables swddir,swddni,swddif for use in the updated version of the Noah LSM.
 !   Laura D. Fowler (laura@ucar.edu) / 2023-04-21.
 ! * removed the variables f_qv and f_qg in the call to subroutine camrad.
@@ -836,7 +838,7 @@
 
 
 !local pointers:
- logical,pointer:: config_o3climatology
+ logical,pointer:: config_o3climatology,config_o3prognostic
  character(len=StrKIND),pointer:: radt_sw_scheme
  character(len=StrKIND),pointer:: radt_cld_overlap,radt_cld_dcorrlen
 
@@ -849,6 +851,7 @@
 !call mpas_log_write(' --- enter subroutine driver_radiation_sw: $i',intArgs=(/itimestep/))
 
  call mpas_pool_get_config(configs,'config_o3climatology' ,config_o3climatology   )
+ call mpas_pool_get_config(configs,'config_o3prognostic'  ,config_o3prognostic    )
  call mpas_pool_get_config(configs,'config_radt_sw_scheme',radt_sw_scheme         )
  call mpas_pool_get_config(configs,'config_radt_cld_overlap' ,radt_cld_overlap    )
  call mpas_pool_get_config(configs,'config_radt_cld_dcorrlen',radt_cld_dcorrlen   )
@@ -881,7 +884,11 @@
  radiation_sw_select: select case (trim(radt_sw_scheme))
     case ("rrtmg_sw")
        o3input = 0
-       if(config_o3climatology) o3input = 2
+       if(config_o3climatology) then
+          o3input = 2
+       elseif(config_o3prognostic) then
+          o3input = 3
+       endif
 
        !initialization of cloud overlap option:
        if(trim(radt_cld_overlap) == "none"              ) cldovrlp = 0
@@ -904,7 +911,8 @@
 !             qv3d       = qv_p          , qc3d     = qc_p        , qi3d     = qi_p           , &
 !             qs3d       = qs_p          , cldfra3d = cldfrac_p   , tsk      = tsk_p          , &
               qv3d       = qvrad_p       , qc3d     = qcrad_p     , qi3d     = qirad_p        , &
-              qs3d       = qsrad_p       , cldfra3d = cldfrac_p   , tsk      = tsk_p          , &
+              qs3d       = qsrad_p       , qo33d    = qo3_p       , &
+              cldfra3d = cldfrac_p       , tsk      = tsk_p       , &
               albedo     = sfc_albedo_p  , xland    = xland_p     , xice     = xice_p         , &
               snow       = snow_p        , coszr    = coszr_p     , xtime    = xtime_m        , &
               gmt        = gmt           , julday   = julday      , radt     = radt           , &

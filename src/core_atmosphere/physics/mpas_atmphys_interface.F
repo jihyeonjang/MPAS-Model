@@ -64,6 +64,8 @@
 !   Laura D. Fowler (laura@ucar.edu) / 2016-04-11.
 ! * corrected the calculation of the surface pressure, mainly extrapolation of the air density to the surface.
 !   Laura D. Fowler (laura@ucar.edu) / 2016-04-25.
+! * added the initialization of the local ozone mixing ratio.
+!   Laura D. Fowler (laura@ucar.edu) / 2022-03-08.
 
 
  contains
@@ -114,6 +116,7 @@
  if(.not.allocated(qi_p)   ) allocate(qi_p(ims:ime,kms:kme,jms:jme)   )
  if(.not.allocated(qs_p)   ) allocate(qs_p(ims:ime,kms:kme,jms:jme)   )
  if(.not.allocated(qg_p)   ) allocate(qg_p(ims:ime,kms:kme,jms:jme)   )
+ if(.not.allocated(qo3_p)  ) allocate(qo3_p(ims:ime,kms:kme,jms:jme)  )
 
  microp_select: select case(trim(microp_scheme))
     case("mp_thompson_aerosols")
@@ -189,6 +192,7 @@
  if(allocated(qi_p)    ) deallocate(qi_p    )
  if(allocated(qs_p)    ) deallocate(qs_p    )
  if(allocated(qg_p)    ) deallocate(qg_p    )
+ if(allocated(qo3_p)   ) deallocate(qo3_p   )
 
  microp_select: select case(trim(microp_scheme))
     case("mp_thompson_aerosols")
@@ -237,7 +241,7 @@
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme,pbl_scheme
 
- integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg
+ integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg,index_qo3
  integer,pointer:: index_nc,index_ni,index_nifa,index_nwfa
 
  real(kind=RKIND),dimension(:),pointer    :: latCell,lonCell
@@ -246,7 +250,7 @@
  real(kind=RKIND),dimension(:,:),pointer  :: zgrid
  real(kind=RKIND),dimension(:,:),pointer  :: zz,exner,pressure_b,rtheta_p,rtheta_b
  real(kind=RKIND),dimension(:,:),pointer  :: rho_zz,theta_m,pressure_p,u,v,w
- real(kind=RKIND),dimension(:,:),pointer  :: qv,qc,qr,qi,qs,qg
+ real(kind=RKIND),dimension(:,:),pointer  :: qv,qc,qr,qi,qs,qg,qo3
  real(kind=RKIND),dimension(:,:),pointer  :: nc,ni,nifa,nwfa
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
@@ -298,6 +302,7 @@
  call mpas_pool_get_dimension(state,'index_qi',index_qi)
  call mpas_pool_get_dimension(state,'index_qs',index_qs)
  call mpas_pool_get_dimension(state,'index_qg',index_qg)
+ call mpas_pool_get_dimension(state,'index_qo3',index_qo3)
 
  call mpas_pool_get_array(state,'scalars',scalars,time_lev)
  qv => scalars(index_qv,:,:)
@@ -360,6 +365,28 @@
 
     case default
  end select microp_select
+
+!initialize the ozone mixing ratio if present in Registry:
+ nullify(qo3)
+ if(index_qo3 .gt. -1) then
+    qo3 => scalars(index_qo3,:,:)
+
+    do j = jts,jte
+    do k = kts,kte
+    do i = its,ite
+       qo3_p(i,k,j) = qo3(k,i)
+    enddo
+    enddo
+    enddo
+ else
+    do j = jts,jte
+    do k = kts,kte
+    do i = its,ite
+       qo3_p(i,k,j) = 0._RKIND
+    enddo
+    enddo
+    enddo
+ endif
 
  pbl_select: select case(trim(pbl_scheme))
     case("bl_mynn")

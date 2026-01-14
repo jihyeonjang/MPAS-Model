@@ -3448,8 +3448,10 @@ module mpas_pool_routines
 
       if (present(timeLevel)) then
          local_timeLevel = timeLevel
+         !call mpas_log_write('JHJ00 local_timelevel=$i timeLevel=$i', intArgs=(/local_timelevel,timeLevel/))
       else
          local_timeLevel = 1
+         !call mpas_log_write('JHJ01 local_timelevel=$i ', intArgs=(/local_timelevel/))
       end if
 
       mem => pool_get_member(inPool, key, MPAS_POOL_FIELD)
@@ -3466,6 +3468,9 @@ module mpas_pool_routines
          if ((mem % contentsTimeLevs > 1) .and. (.not. present(timeLevel))) then
             call pool_mesg('Error: Field '//trim(key)//' has more than one time level, but no timeLevel argument given.')
          end if
+         !call mpas_log_write('JHJ02 contentsDims=$i ', intArgs=(/mem % contentsDims/))
+         !call mpas_log_write('JHJ03 contentsTimeLevs=$i ', intArgs=(/mem % contentsTimeLevs/))
+         !call mpas_log_write('JHJ04 local_timeLevel=$i ', intArgs=(/local_timeLevel/))
          if (mem % contentsTimeLevs < local_timeLevel) then
             call pool_mesg('Error: Field '//trim(key)//' has too few time levels.')
          end if
