@@ -397,6 +397,9 @@ module mpas_subdriver
       end if
 
       call mpas_timer_stop('initialize')
+      !call mpas_log_write('JHJ init core '//trim(domain_ptr % core % coreName), messageType=MPAS_LOG_ERR)
+      !call mpas_log_write('JHJ timeStamp '//trim(timeStamp), messageType=MPAS_LOG_ERR)
+      !call mpas_log_write('JHJ end core_init')
 
    end subroutine mpas_init
 
@@ -417,6 +420,7 @@ module mpas_subdriver
       if ( iErr /= 0 ) then
          call mpas_log_write('Core run failed for core '//trim(domain_ptr % core % coreName), messageType=MPAS_LOG_CRIT)
       end if
+      !call mpas_log_write('JHJ end core_run')
 
    end subroutine mpas_run
 

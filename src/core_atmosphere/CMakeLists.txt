@@ -318,6 +318,18 @@ set(ATMOSPHERE_CORE_PHYSICS_NOAMP_SRC_SOURCES
 )
 list(TRANSFORM ATMOSPHERE_CORE_PHYSICS_NOAMP_SRC_SOURCES PREPEND physics/physics_noahmp/src/)
 
+# chemistry/
+set(ATMOSPHERE_CORE_CHEMISTRY_SOURCES
+        chemistry_opp/o3_gfs.F
+        mpas_chemistry_driver.F
+        mpas_chemistry_init.F
+        mpas_chemistry_interface.F
+        mpas_chemistry_manager.F
+        mpas_chemistry_opp.F
+        mpas_chemistry_packages.F
+        mpas_chemistry_todynamics.F)
+list(TRANSFORM ATMOSPHERE_CORE_CHEMISTRY_SOURCES PREPEND chemistry/)
+
 # diagnostics/
 set(ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES
     mpas_atm_diagnostic_template.F
@@ -374,6 +386,7 @@ add_library(core_atmosphere ${ATMOSPHERE_CORE_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_MMM_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_WRF_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_NOAA_SOURCES}
+            ${ATMOSPHERE_CORE_CHEMISTRY_SOURCES}
             ${ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES}
             ${ATMOSPHERE_CORE_DYNAMICS_SOURCES})
 
@@ -383,6 +396,9 @@ set(CORE_ATMOSPHERE_COMPILE_DEFINITIONS
 )
 if (${DO_PHYSICS})
     list(APPEND CORE_ATMOSPHERE_COMPILE_DEFINITIONS DO_PHYSICS)
+endif ()
+if (${DO_CHEMISTRY})
+    list(APPEND CORE_ATMOSPHERE_COMPILE_DEFINITIONS DO_CHEMISTRY)
 endif ()
 target_compile_definitions(core_atmosphere PRIVATE ${CORE_ATMOSPHERE_COMPILE_DEFINITIONS})
 set_MPAS_DEBUG_flag(core_atmosphere)

@@ -2,10 +2,13 @@
 
 .PHONY: physics_wrf physics_wrf_lib
 
-all: dummy physics_wrf
+all: dummy physics_wrf_init physics_wrf
 
 dummy:
 	echo "****** compiling physics_wrf ******"
+
+OBJS_init = \
+	module_ra_cam_support.o
 
 OBJS = \
 	libmassv.o                     \
@@ -53,6 +56,8 @@ OBJS = \
 	sf_mynn_pre.o                  \
 	sf_sfclayrev_pre.o
 
+physics_wrf_init: $(OBJS_init)
+	ar -ru ./../libphys.a $(OBJS_init)
 
 physics_wrf: $(OBJS)
 

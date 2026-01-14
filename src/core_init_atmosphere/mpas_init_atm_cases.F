@@ -19,6 +19,7 @@ module init_atm_cases
    use mpas_timer
    use mpas_init_atm_static
    use mpas_init_atm_surface
+   use mpas_init_atm_o3mr
    use mpas_init_atm_thompson_aerosols, only: init_atm_thompson_aerosols, init_atm_thompson_aerosols_lbc
    use mpas_atmphys_constants, only: svpt0,svp1,svp2,svp3
    use mpas_atmphys_functions
@@ -262,6 +263,7 @@ module init_atm_cases
             
             if (config_met_interp) then
                call init_atm_thompson_aerosols(block_ptr, mesh, block_ptr % configs, diag, state)
+               call init_atm_o3mr(mesh, block_ptr % configs, fg, diag ,state)
                call physics_initialize_real(mesh, fg, domain % dminfo, block_ptr % dimensions, block_ptr % configs)
             end if
 
