@@ -2,8 +2,6 @@
  module o3_gfs
  use mpas_kind_types,only: kind_phys => RKIND
  use mpas_log,only: mpas_log_write
- !use mpas_log
- !use mpas_derived_types, only : MPAS_LOG_OUT, MPAS_LOG_WARN, MPAS_LOG_ERR, MPAS_LOG_CRIT
  use mpas_io_units,only: mpas_new_unit
 
  use mpas_atmphys_utilities,only: physics_error_fatal
@@ -227,7 +225,6 @@ enddo
        ozp4(i,k) = 0.
     enddo
  enddo
-! call mpas_log_write('JHJ1 after zero initial', messageType=MPAS_LOG_ERR)
 
 !--- initialization of the overlying vertically-integrated mixing ratios:
  do k = 1,levs+1
@@ -274,7 +271,6 @@ enddo
           enddo
        enddo
     enddo
-! call mpas_log_write('JHJ2 after prod', messageType=MPAS_LOG_ERR)
 
     do j = 1,pl_coeff
        do i = 1,im
@@ -286,15 +282,11 @@ enddo
           endif
        enddo
     enddo
-! call mpas_log_write('JHJ3 after prod $i',intArgs=(/im/), messageType=MPAS_LOG_ERR)
     do i = 1,im
-!       call mpas_log_write('JHJ30 $i before do',intArgs=(/i/), messageType=MPAS_LOG_ERR)
        colo3(i,l) = colo3(i,l+1) + ozi(i,l)*delp(i,l)*gravi
        coloz(i,l) = coloz(i,l+1) + prod(i,6)*delp(i,l)*gravi
        prod(i,2)  = min(prod(i,2),0.0)
-!       call mpas_log_write('JHJ33- $i $r $r $r $r $r',intArgs=(/i/),realArgs=(/colo3(i,l+1),ozi(i,l),prod(i,6),prod(i,2),delp(i,l)/), messageType=MPAS_LOG_ERR)
     enddo
-! call mpas_log_write('JHJ4 after prod', messageType=MPAS_LOG_ERR)
 
     do i = 1,im
        ozib(i) = ozi(i,l)
@@ -303,7 +295,6 @@ enddo
            + prod(i,4) * (colo3(i,l)-coloz(i,l))
        oz(i,l) = (ozib(i)  + tem*dt) / (1.0 - prod(i,2)*dt)
     enddo
-! call mpas_log_write('JHJ5 after prod', messageType=MPAS_LOG_ERR)
     if(ldiag3d .and. qdiag3d) then ! ozone change diagnostics
        do i = 1,im
           ozp1(i,l) = ozp1(i,l) + (prod(i,1)-prod(i,2)*prod(i,6))*dt
@@ -311,11 +302,9 @@ enddo
           ozp3(i,l) = ozp3(i,l) + prod(i,3)*(tin(i,l)-prod(i,5))*dt
           ozp4(i,l) = ozp4(i,l) + prod(i,4)*(colo3(i,l)-coloz(i,l))*dt
        enddo
-! call mpas_log_write('JHJ6 after prod', messageType=MPAS_LOG_ERR)
     endif
 
  enddo
-! call mpas_log_write('JHJ7 after prod', messageType=MPAS_LOG_ERR)
 
  call mpas_log_write('--- end subroutine o3_gfs_run:')
 

@@ -267,9 +267,7 @@ module atm_core
 
          call atm_mpas_init_block(domain % dminfo, domain % streamManager, block, mesh, dt)
 
-         !call mpas_log_write('JHJ 1 atm_core_init aft atm_mpas_init_block')
          call mpas_pool_get_array(state, 'xtime', xtime, 1)
-         !call mpas_log_write('JHJ 2 atm_core_init get_array xtime')
          xtime = startTimeStamp
 
          ! Initialize initial_time in second time level. We need to do this because initial state
@@ -277,32 +275,25 @@ module atm_core
          ! represent the original time level 2, the initial_time field will be invalid.
          call mpas_pool_get_array(state, 'initial_time', initial_time1, 1)
          call mpas_pool_get_array(state, 'initial_time', initial_time2, 2)
-         !call mpas_log_write('JHJ 3 atm_core_init get_array initial_time')
          initial_time2 = initial_time1
 
          ! Set the units to be cf compliant 'seconds since <cf-timestamp>'
          call mpas_pool_get_field(state, 'Time', Time_field)
-         !call mpas_log_write('JHJ 4 atm_core_init get_field Time')
-         !write(*,*) 'Time_field',Time_field
          call mpas_modify_att(Time_field % attLists(1) % attList, 'units', &
               'seconds since ' // mpas_string_replace(initial_time1, '_', ' '))
-         !call mpas_log_write('JHJ 5 atm_core_init modify_att')
 
           block => block % next
       end do
-      !call mpas_log_write('JHJ 6 atm_core_init aft block')
 
       call exchange_halo_group(domain, 'initialization:pv_edge,ru,rw')
 
       call mpas_atm_diag_setup(domain % streamManager, domain % blocklist % configs, &
                                domain % blocklist % structs, domain % clock, domain % dminfo)
 
-      !call mpas_log_write('JHJ 7 atm_core_init aft atm_diag_setup')
       !
       ! Prepare the dynamics for integration
       !
       call mpas_atm_dynamics_init(domain)
-      !call mpas_log_write('JHJ 8 atm_core_init aft atm_dynamics_init')
 
    end function atm_core_init
 
@@ -666,30 +657,20 @@ module atm_core
       clock => domain % clock
       mpas_log_info => domain % logInfo
       
-      !call mpas_log_write('JHJ 000 atm_core_run mpas_atm_core.F')
-
       call mpas_get_timeInterval(mpas_get_clock_timestep(clock, ierr), dt=dt)
-      !call mpas_log_write('JHJ 001 atm_core_run mpas_atm_core.F')
       call mpas_pool_get_config(domain % blocklist % configs, 'config_do_restart', config_do_restart)
-      !call mpas_log_write('JHJ 002 atm_core_run mpas_atm_core.F')
       call mpas_pool_get_config(domain % blocklist % configs, 'config_restart_timestamp_name', config_restart_timestamp_name)
-
-      !call mpas_log_write('JHJ 1 atm_core_run mpas_atm_core.F')
 
       ! Avoid writing a restart file at the initial time
       call MPAS_stream_mgr_reset_alarms(domain % streamManager, streamID='restart', direction=MPAS_STREAM_OUTPUT, ierr=ierr)
 
-      !call mpas_log_write('JHJ 2 atm_core_run mpas_atm_core.F')
       ! Also, for restart runs, avoid writing the initial history or diagnostics fields to avoid overwriting those from the preceding run
       if (config_do_restart) then
          call MPAS_stream_mgr_reset_alarms(domain % streamManager, streamID='output', direction=MPAS_STREAM_OUTPUT, ierr=ierr)
          call MPAS_stream_mgr_reset_alarms(domain % streamManager, streamID='diagnostics', direction=MPAS_STREAM_OUTPUT, ierr=ierr)
-      !call mpas_log_write('JHJ 3 atm_core_run mpas_atm_core.F')
       end if
-      !call mpas_log_write('JHJ 4 atm_core_run mpas_atm_core.F')
 
       call mpas_dmpar_get_time(diag_start_time)
-      !call mpas_log_write('JHJ 5 atm_core_run mpas_atm_core.F')
 
       if (MPAS_stream_mgr_ringing_alarms(domain % streamManager, direction=MPAS_STREAM_OUTPUT, ierr=ierr)) then
          block_ptr => domain % blocklist
@@ -705,30 +686,19 @@ module atm_core
             block_ptr => block_ptr % next
          end do
       end if
-      !call mpas_log_write('JHJ 6 atm_core_run mpas_atm_core.F')
       call mpas_timer_start('diagnostic_fields')
-      !call mpas_log_write('JHJ 7 atm_core_run mpas_atm_core.F')
       call mpas_atm_diag_reset()
-      !call mpas_log_write('JHJ 8 atm_core_run mpas_atm_core.F')
       call mpas_atm_diag_update()
-      !call mpas_log_write('JHJ 9 atm_core_run mpas_atm_core.F')
       call mpas_atm_diag_compute()
-      !call mpas_log_write('JHJ 10 atm_core_run mpas_atm_core.F')
       call mpas_timer_stop('diagnostic_fields')
 
       call mpas_dmpar_get_time(diag_stop_time)
-      !call mpas_log_write('JHJ 11 atm_core_run mpas_atm_core.F')
 
       call mpas_timer_start('stream_output')
-      !call mpas_log_write('JHJ 12 atm_core_run mpas_atm_core.F')
       call mpas_dmpar_get_time(output_start_time)
-      !call mpas_log_write('JHJ 13 atm_core_run mpas_atm_core.F')
       call mpas_stream_mgr_write(domain % streamManager, ierr=ierr)
-      !call mpas_log_write('JHJ 14 atm_core_run mpas_atm_core.F')
       call mpas_dmpar_get_time(output_stop_time)
-      !call mpas_log_write('JHJ 15 atm_core_run mpas_atm_core.F')
       call mpas_timer_stop('stream_output')
-      !call mpas_log_write('JHJ 16 atm_core_run mpas_atm_core.F')
       if (ierr /= MPAS_STREAM_MGR_NOERR .and. &
           ierr /= MPAS_STREAM_MGR_ERR_CLOBBER_FILE .and. &
           ierr /= MPAS_STREAM_MGR_ERR_CLOBBER_REC) then

@@ -12,7 +12,7 @@
  use mpas_derived_types,only: mpas_pool_type
  use mpas_pool_routines,only: mpas_pool_get_config,mpas_pool_get_dimension,mpas_pool_get_array
  use mpas_dmpar
- use mpas_atm_dimensions !JHJ
+ use mpas_atm_dimensions
 
  implicit none
  private
@@ -47,10 +47,8 @@
  logical,pointer:: o3prognostic
 
  integer:: iCell,k
-! integer,pointer:: nCells,nCellsSolve,nVertLevels !org JHJ
-! integer,pointer:: index_qo3,num_scalars !org JHJ
- integer,pointer:: nCells,nCellsSolve !JHJ
- integer,pointer:: index_qo3 !JHJ
+ integer,pointer:: nCells,nCellsSolve
+ integer,pointer:: index_qo3
 
  real(kind=RKIND),dimension(:,:),pointer:: mass      ! time level 2 rho_zz
  real(kind=RKIND),dimension(:,:),pointer:: qo3oppten
@@ -66,14 +64,12 @@
  call mpas_log_write('--- enter subroutine chemistry_get_tend:')
 
  call mpas_pool_get_dimension(state,'index_qo3'  ,index_qo3  )
-! call mpas_pool_get_dimension(state,'num_scalars',num_scalars) !org JHJ
 
  call mpas_pool_get_array(tend,'scalars_tend',tend_scalars)
  tend_scalars(index_qo3,:,:) = 0._RKIND
 
  call mpas_pool_get_dimension(mesh,'nCells'     ,nCells     )
  call mpas_pool_get_dimension(mesh,'nCellsSolve',nCellsSolve)
-! call mpas_pool_get_dimension(mesh,'nVertLevels',nVertLevels) !org JHJ
 
  call mpas_pool_get_array(state,'rho_zz',mass,2)
 
@@ -85,14 +81,12 @@
 !
  if (.not.associated(qo3oppten)) allocate(qo3oppten(0,0))
 
-! call chemistry_get_tend_work(nCells,nCellsSolve,nVertLevels,o3prognostic,index_qo3,num_scalars,mass, & !org JHJ
- call chemistry_get_tend_work(nCells,nCellsSolve,o3prognostic,index_qo3,mass, & !JHJ
+ call chemistry_get_tend_work(nCells,nCellsSolve,o3prognostic,index_qo3,mass, &
                               qo3oppten,tend_scalars)
 
 !
 !clean up any pointers that were allocated with zero size before the call to chemistry_get_tend_work:
 !
- call mpas_log_write('JHJ chemistry_get_tend: $i',intArgs=(/size(qo3oppten)/))
  if (size(qo3oppten) == 0) deallocate(qo3oppten)
 
  call mpas_log_write('--- end subroutine chemistry_get_tend:')
@@ -100,18 +94,15 @@
  end subroutine chemistry_get_tend
 
 !=================================================================================================================
-! subroutine chemistry_get_tend_work(nCells,nCellsSolve,nVertLevels,o3prognostic,index_qo3,num_scalars,mass, & !org JHJ
- subroutine chemistry_get_tend_work(nCells,nCellsSolve,o3prognostic,index_qo3,mass, &  !JHJ
+ subroutine chemistry_get_tend_work(nCells,nCellsSolve,o3prognostic,index_qo3,mass, &
                                     qo3oppten,tend_scalars)
 !=================================================================================================================
 
 !input arguments:
  logical,intent(in) :: o3prognostic
 
-! integer,intent(in):: nCells,nCellsSolve,nVertLevels !org JHJ
-! integer,intent(in):: index_qo3,num_scalars !org JHJ
- integer,intent(in):: nCells,nCellsSolve  !JHJ
- integer,intent(in):: index_qo3 !JHJ
+ integer,intent(in):: nCells,nCellsSolve
+ integer,intent(in):: index_qo3
  
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: mass
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: qo3oppten
@@ -120,8 +111,7 @@
  real(kind=RKIND),intent(inout),dimension(num_scalars,nVertLevels,nCells+1):: tend_scalars
 
 !local variables and arrays:
-! integer:: iCell,k !org JHJ
- integer:: i,k !JHJ
+ integer:: i,k
 
 !-----------------------------------------------------------------------------------------------------------------
 

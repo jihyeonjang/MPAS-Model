@@ -566,17 +566,14 @@
          call mpas_pool_get_dimension(statePool, 'index_qo3', index_qo3)
          call mpas_pool_get_array(statePool, 'scalars', scalars, 1)
 
+         !JHJ: need to check which is the best for check
          qo3 => scalars(index_qo3,1,:) !org JHJ
          !qo3 => scalars(index_qo3,:,1) !JHJ
-         !call mpas_log_write('JHJ before 2D qo3 => scalars ')
          !qo3 => scalars(index_qo3,:,:)  !JHJ
-         !call mpas_log_write('JHJ after 2D qo3 => scalars ')
 
          maxqo3_local = max(maxqo3_local, maxval(qo3(1:nCellsSolve))) !org JHJ
          !maxqo3_local = max(maxqo3_local, maxval(qo3(1:nVertLevels)))  !JHJ
          !maxqo3_local = max(maxqo3_local, maxval(qo3(1:nVertLevels,1:nCellsSolve)))  !JHJ
-         !maxqo3_local = max(maxqo3_local, maxval(qo3(:,:)))  !JHJ
-         !call mpas_log_write('JHJ after maxval(qo3(1:nVertLevels,1:nCellsSolve)) ')
 
          block => block % next
      end do
