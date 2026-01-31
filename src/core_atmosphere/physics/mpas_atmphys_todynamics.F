@@ -114,6 +114,11 @@
 
  real(kind=RKIND),dimension(:,:),allocatable:: tend_th
 
+ type(mpas_pool_type), pointer :: diag_physics
+ real(kind=RKIND), pointer :: config_dt
+ real(kind=RKIND), dimension(:,:), pointer :: accrthratensw, accrthratenlw
+ real(kind=RKIND), dimension(:,:), pointer :: accrthrasw, accrthralw
+
 !=================================================================================================================
 
  call mpas_pool_get_dimension(mesh,'nCells',nCells)
@@ -126,6 +131,7 @@
  call mpas_pool_get_config(configs,'config_pbl_scheme'       ,pbl_scheme       )
  call mpas_pool_get_config(configs,'config_radt_lw_scheme'   ,radt_lw_scheme   )
  call mpas_pool_get_config(configs,'config_radt_sw_scheme'   ,radt_sw_scheme   )
+ call mpas_pool_get_config(configs,'config_dt',config_dt)
 
  call mpas_pool_get_array(state,'theta_m' ,theta_m,1)
  call mpas_pool_get_array(state,'scalars' ,scalars,1)
@@ -171,6 +177,11 @@
 
  call mpas_pool_get_array(tend,'scalars_tend',tend_scalars)
 
+ call mpas_pool_get_subpool(block % structs, 'diag_physics', diag_physics)
+ call mpas_pool_get_array(diag_physics,'accrthratensw',accrthratensw)
+ call mpas_pool_get_array(diag_physics,'accrthratenlw',accrthratenlw)
+ call mpas_pool_get_array(diag_physics,'accrthrasw',accrthrasw)
+ call mpas_pool_get_array(diag_physics,'accrthralw',accrthralw)
 
 !initialize the tendency for the potential temperature and all scalars due to PBL, convection,
 !and longwave and shortwave radiation:
@@ -218,6 +229,26 @@
               rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
               tend_th,tend_rtheta_physics,tend_scalars,tend_ru_physics,tend_u_phys,      &
               exchange_halo_group)
+
+! update accumulated radiation tendencies for theta
+! Accumulate rthratensw and rthratenlw (K/s) every timestep
+
+ if (radt_sw_scheme .ne. 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+      accrthratensw(k,i) = accrthratensw(k,i) + rthratensw(k,i)
+      accrthrasw(k,i) = accrthrasw(k,i) + rthratensw(k,i) * config_dt
+    end do
+    end do
+ end if
+ if (radt_lw_scheme .ne. 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+      accrthratenlw(k,i) = accrthratenlw(k,i) + rthratenlw(k,i)
+      accrthralw(k,i) = accrthralw(k,i) + rthratenlw(k,i) * config_dt
+    end do
+    end do
+ end if
 
 !clean up any pointers that were allocated with zero size before the call to physics_get_tend_work:
  if(size(rucuten) == 0 ) deallocate(rucuten )

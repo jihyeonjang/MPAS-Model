@@ -136,6 +136,9 @@ use mpas_stream_manager
  real(kind=RKIND),dimension(:),pointer:: sst,sstsk,tmn,xice,xicem
  real(kind=RKIND),dimension(:,:),pointer:: tlag
 
+ real(kind=RKIND),dimension(:,:),pointer:: accrthratensw,accrthratenlw
+ real(kind=RKIND),dimension(:,:),pointer:: accrthrasw,accrthralw
+
  real(kind=RKIND),pointer:: config_oml_hml0
  real(kind=RKIND),dimension(:),pointer:: t_oml,t_oml_initial,t_oml_200m_initial
  real(kind=RKIND),dimension(:),pointer:: h_oml,h_oml_initial,hu_oml,hv_oml
@@ -212,6 +215,11 @@ use mpas_stream_manager
  call mpas_pool_get_array(diag_physics,'aclwupbc'    ,aclwupbc    )
  call mpas_pool_get_array(diag_physics,'aclwupt'     ,aclwupt     )
  call mpas_pool_get_array(diag_physics,'aclwuptc'    ,aclwuptc    )
+
+ call mpas_pool_get_array(diag_physics,'accrthratensw' ,accrthratensw )
+ call mpas_pool_get_array(diag_physics,'accrthratenlw' ,accrthratenlw )
+ call mpas_pool_get_array(diag_physics,'accrthrasw' ,accrthrasw )
+ call mpas_pool_get_array(diag_physics,'accrthralw' ,accrthralw )
 
  call mpas_pool_get_array(diag_physics,'nsteps_accum',nsteps_accum)
  call mpas_pool_get_array(diag_physics,'ndays_accum' ,ndays_accum )
@@ -320,6 +328,16 @@ use mpas_stream_manager
        aclwupbc(iCell) = 0._RKIND
        aclwupt(iCell)  = 0._RKIND
        aclwuptc(iCell) = 0._RKIND
+
+    enddo
+
+    do k = 1,nVertLevels
+    do iCell = 1, nCellsSolve
+       accrthratensw(k,iCell) = 0._RKIND
+       accrthratenlw(k,iCell) = 0._RKIND
+       accrthrasw(k,iCell) = 0._RKIND
+       accrthralw(k,iCell) = 0._RKIND
+    enddo
     enddo
  endif
 
