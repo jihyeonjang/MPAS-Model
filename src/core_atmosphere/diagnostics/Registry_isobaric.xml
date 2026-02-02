@@ -8,6 +8,9 @@
 
         <dim name="nIsoLevelsZ"         definition="13"
              description="Number of isobaric levels to which height will be vertically interpolated"/>
+
+        <dim name="nIsoLevelsDiag"       definition="41"
+             description="Number of isobaric levels to which variables will be vertically interpolated"/>
 </dims>
 
 
@@ -214,6 +217,19 @@
         <var name="z_isobaric"       type="real" dimensions="nIsoLevelsZ nCells Time" units="m"
              description="Height interpolated to isobaric surfaces defined in z_iso_levels"/>
 
+        <var name="u_diag_isobaric"       type="real" dimensions="nIsoLevelsDiag nCells Time" units="m s^{-1}"
+             description="Reconstructed zonal wind interpolated to isobaric surfaces defined in diag_iso_levels"/>
+        <var name="v_diag_isobaric"       type="real" dimensions="nIsoLevelsDiag nCells Time" units="m s^{-1}"
+             description="Reconstructed meridional wind interpolated to isobaric surfaces defined in diag_iso_levels"/>
+        <var name="t_diag_isobaric"       type="real" dimensions="nIsoLevelsDiag nCells Time" units="K"
+             description="Temperature interpolated to isobaric surfaces defined in diag_iso_levels"/>
+        <var name="q_diag_isobaric"       type="real" dimensions="nIsoLevelsDiag nCells Time" units="kg kg^{-1}"
+             description="Water vapor mixing ratio interpolated to isobaric surfaces defined in diag_iso_levels"/>
+        <var name="z_diag_isobaric"       type="real" dimensions="nIsoLevelsDiag nCells Time" units="m"
+             description="Height interpolated to isobaric surfaces defined in diag_iso_levels"/>
+        <var name="w_diag_isobaric"       type="real" dimensions="nIsoLevelsDiag nCells Time" units="m s^{-1}"
+             description="Vertical velocity interpolated to isobaric surfaces defined in diag_iso_levels"/>
+
         <var name="meanT_500_300"    type="real" dimensions="nCells Time" units="K"
              description="Mean temperature in the 300 hPa - 500 hPa layer"/>
 
@@ -222,5 +238,8 @@
 
         <var name="z_iso_levels" type="real" dimensions="nIsoLevelsZ" units="Pa"
              description="Levels for vertical interpolation of height to isobaric surfaces"/>
+
+        <var name="diag_iso_levels" type="real" dimensions="nIsoLevelsDiag" units="Pa"
+             description="Levels for vertical interpolation of state variables to isobaric surfaces"/>
 
 </var_struct>
