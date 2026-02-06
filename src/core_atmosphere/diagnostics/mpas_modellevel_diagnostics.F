@@ -13,7 +13,7 @@ module mpas_modellevel_diagnostics
     type (MPAS_pool_type), pointer :: mesh
     type (MPAS_pool_type), pointer :: state
     type (MPAS_pool_type), pointer :: diag
-    !type (MPAS_pool_type), pointer :: diag_physics
+    type (MPAS_pool_type), pointer :: diag_physics
 
     type (MPAS_clock_type), pointer :: clock
 
@@ -52,6 +52,7 @@ module mpas_modellevel_diagnostics
         call mpas_pool_get_subpool(all_pools, 'mesh', mesh)
         call mpas_pool_get_subpool(all_pools, 'state', state)
         call mpas_pool_get_subpool(all_pools, 'diag', diag)
+        call mpas_pool_get_subpool(all_pools, 'diag_physics', diag_physics)
 
         !call mpas_pool_get_array(diag, 'temperature', temperature)
         !call mpas_pool_get_array(diag, 'spechum', spechum)
@@ -96,6 +97,12 @@ module mpas_modellevel_diagnostics
 
         logical :: need_ml_diags, need_temperature, need_spechum
 
+        logical :: need_o3vmr
+        real (kind=RKIND), dimension(:,:), pointer :: o3vmr
+        integer, pointer :: index_qo3
+        real :: amdo     ! Molecular weight of dry air / ozone
+        data amdo /  0.603461 /
+
         time_lev = 1
 
         need_ml_diags = .false.
@@ -104,13 +111,15 @@ module mpas_modellevel_diagnostics
         need_spechum = MPAS_field_will_be_written('spechum')
         need_ml_diags = need_ml_diags .or. need_spechum
 
+        need_o3vmr = MPAS_field_will_be_written('o3vmr')
+        need_ml_diags = need_ml_diags .or. need_o3vmr
 
         if (need_ml_diags) then
            call mpas_pool_get_dimension(mesh, 'nCellsSolve', nCellsSolve)
            call mpas_pool_get_dimension(mesh, 'nVertLevels', nVertLevels)
         end if
 
-        if (need_temperature .or. need_spechum) then
+        if (need_temperature .or. need_spechum .or. need_o3vmr ) then
            call mpas_pool_get_dimension(state, 'index_qv', index_qv)
            call mpas_pool_get_array(state, 'scalars', scalars, time_lev)
         end if
@@ -123,6 +132,11 @@ module mpas_modellevel_diagnostics
 
         if (need_spechum) then
            call mpas_pool_get_array(diag, 'spechum', spechum)
+        end if
+
+        if (need_o3vmr) then
+           call mpas_pool_get_dimension(state,'index_qo3',index_qo3)
+           call mpas_pool_get_array(diag_physics,'o3vmr',o3vmr)
         end if
 
         if (need_temperature) then
@@ -141,6 +155,16 @@ module mpas_modellevel_diagnostics
            end do
         end if
 
+        if (need_o3vmr) then
+        if ( index_qo3 .gt. -1 ) then
+           do iCell=1,nCellsSolve
+           do k=1,nVertLevels
+              o3vmr(k,iCell) = scalars(index_qo3,k,iCell)*amdo
+           end do
+           end do
+        end if
+        end if
+         
     end subroutine modellevel_diagnostics_compute
 
 end module mpas_modellevel_diagnostics

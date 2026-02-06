@@ -681,15 +681,7 @@ module atm_core
             call mpas_pool_get_subpool(block_ptr % structs, 'diag_physics', diag_physics)
 #endif
             call mpas_pool_get_subpool(block_ptr % structs, 'mesh', mesh)
-
-!++JHJ
-            !call atm_compute_output_diagnostics(state, 1, diag, mesh)
-#ifdef DO_CHEMISTRY
-            call atm_compute_output_diagnostics(state, 1, diag, mesh, diag_physics) !JHJ
-#else
-            call atm_compute_output_diagnostics(state, 1, diag, mesh) !JHJ
-#endif
-!++JHJ
+            call atm_compute_output_diagnostics(state, 1, diag, mesh)
 
             block_ptr => block_ptr % next
          end do
@@ -851,14 +843,7 @@ module atm_core
 #endif
               call mpas_pool_get_subpool(block_ptr % structs, 'mesh', mesh)
               call mpas_pool_get_subpool(block_ptr % structs, 'tend', tend)
-!++JHJ
-              !call atm_compute_output_diagnostics(state, 1, diag, mesh)
-#ifdef DO_CHEMISTRY
-              call atm_compute_output_diagnostics(state, 1, diag, mesh, diag_physics)
-#else
               call atm_compute_output_diagnostics(state, 1, diag, mesh)
-#endif
-!--JHJ
 
               block_ptr => block_ptr % next
            end do
@@ -925,15 +910,8 @@ module atm_core
    
    end function atm_core_run
 
-   
-!++JHJ
-   !subroutine atm_compute_output_diagnostics(state, time_lev, diag, mesh)
-#ifdef DO_CHEMISTRY
-   subroutine atm_compute_output_diagnostics(state, time_lev, diag, mesh, diag_physics)
-#else
+
    subroutine atm_compute_output_diagnostics(state, time_lev, diag, mesh)
-#endif
-!--JHJ
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Compute diagnostic fields for a domain to be written to history files
    !
@@ -951,16 +929,6 @@ module atm_core
       integer, intent(in) :: time_lev            ! which time level to use from state
       type (mpas_pool_type), intent(inout) :: diag
       type (mpas_pool_type), intent(in) :: mesh
-#ifdef DO_CHEMISTRY
-!++JHJ
-      type (mpas_pool_type), intent(inout) :: diag_physics
-      integer, pointer :: index_qo3
-      real (kind=RKIND), dimension(:,:), pointer :: o3vmr
-
-      real :: amdo     ! Molecular weight of dry air / ozone
-      data amdo /  0.603461 /
-!--JHJ
-#endif
    
       integer :: iCell, k
       integer, pointer :: nCells, nVertLevels, index_qv
@@ -983,12 +951,6 @@ module atm_core
       call mpas_pool_get_array(diag, 'pressure', pressure)
 
       call mpas_pool_get_array(mesh, 'zz', zz)
-#ifdef DO_CHEMISTRY
-!++JHJ
-      call mpas_pool_get_dimension(state,'index_qo3',index_qo3)
-      call mpas_pool_get_array(diag_physics,'o3vmr',o3vmr)
-!--JHJ
-#endif
 
       do iCell=1,nCells
          do k=1,nVertLevels
@@ -997,17 +959,6 @@ module atm_core
             pressure(k,iCell) = pressure_base(k,iCell) + pressure_p(k,iCell)
          end do
       end do
-#ifdef DO_CHEMISTRY
-!++JHJ
-      if ( index_qo3 .gt. -1 ) then
-         do iCell=1,nCells
-            do k=1,nVertLevels
-               o3vmr(k,iCell) = scalars(index_qo3,k,iCell)*amdo
-            end do
-         end do
-      end if
-!--JHJ
-#endif
 
    end subroutine atm_compute_output_diagnostics
    
