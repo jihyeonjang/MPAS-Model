@@ -504,10 +504,6 @@
           enddo
           if(allocated(p2d))  deallocate(p2d)
           if(allocated(o32d)) deallocate(o32d)
-
-       else if(config_o3prognostic) then
-         call mpas_log_write('--- config_o3prognostic')
-
        else
           do k = 1, num_oznLevels
              pin_p(k) = 0.0_RKIND
@@ -839,7 +835,7 @@
  real(kind=RKIND):: radt,xtime_m
 
 !-----------------------------------------------------------------------------------------------------------------
-call mpas_log_write(' --- enter subroutine driver_radiation_lw: ')
+!call mpas_log_write(' --- enter subroutine driver_radiation_lw: ')
 
  call mpas_pool_get_config(configs,'config_o3climatology'    ,config_o3climatology)
  call mpas_pool_get_config(configs,'config_o3prognostic '    ,config_o3prognostic )
@@ -969,7 +965,7 @@ call mpas_log_write(' --- enter subroutine driver_radiation_lw: ')
 !copy local arrays to MPAS grid:
  call radiation_lw_to_MPAS(configs,diag_physics,tend_physics,its,ite)
 
- call mpas_log_write('--- end subroutine driver_radiation_lw.')
+!call mpas_log_write('--- end subroutine driver_radiation_lw.')
 
  end subroutine driver_radiation_lw
 
