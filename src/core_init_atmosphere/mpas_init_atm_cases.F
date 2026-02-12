@@ -19,7 +19,6 @@ module init_atm_cases
    use mpas_timer
    use mpas_init_atm_static
    use mpas_init_atm_surface
-   use mpas_init_atm_o3mr
    use mpas_init_atm_thompson_aerosols, only: init_atm_thompson_aerosols, init_atm_thompson_aerosols_lbc
    use mpas_atmphys_constants, only: svpt0,svp1,svp2,svp3
    use mpas_atmphys_functions
@@ -263,7 +262,6 @@ module init_atm_cases
             
             if (config_met_interp) then
                call init_atm_thompson_aerosols(block_ptr, mesh, block_ptr % configs, diag, state)
-               call init_atm_o3mr(mesh, block_ptr % configs, fg, diag ,state)
                call physics_initialize_real(mesh, fg, domain % dminfo, block_ptr % dimensions, block_ptr % configs)
             end if
 
@@ -2695,6 +2693,7 @@ module init_atm_cases
 
       integer :: nfglevels_actual
       integer, pointer :: index_qv
+      integer, pointer :: index_qo3
 
       integer, dimension(5) :: interp_list
       real (kind=RKIND) :: maskval
@@ -2768,6 +2767,7 @@ module init_atm_cases
       logical, pointer :: config_tc_vertical_grid
       character (len=StrKIND), pointer :: config_specified_zeta_levels
       logical, pointer :: config_use_spechumd
+      logical, pointer :: config_use_ozone
       integer, pointer :: config_nfglevels
       integer, pointer :: config_nfgsoillevels
       logical, pointer :: config_smooth_surfaces
@@ -2796,6 +2796,7 @@ module init_atm_cases
       real (kind=RKIND), dimension(:,:), pointer :: rho
       real (kind=RKIND), dimension(:,:), pointer :: relhum
       real (kind=RKIND), dimension(:,:), pointer :: spechum
+      real (kind=RKIND), dimension(:,:), pointer :: o3mr
       real (kind=RKIND), dimension(:,:), pointer :: ru
       real (kind=RKIND), dimension(:,:), pointer :: rw
       real (kind=RKIND), dimension(:), pointer :: precipw
@@ -2815,6 +2816,7 @@ module init_atm_cases
       real (kind=RKIND), dimension(:,:), pointer :: t_fg
       real (kind=RKIND), dimension(:,:), pointer :: rh_fg
       real (kind=RKIND), dimension(:,:), pointer :: sh_fg
+      real (kind=RKIND), dimension(:,:), pointer :: o3_fg
       real (kind=RKIND), dimension(:,:), pointer :: gfs_z
       real (kind=RKIND), dimension(:,:), pointer :: p_fg
       real (kind=RKIND), dimension(:,:), pointer :: st_fg
@@ -2846,6 +2848,7 @@ module init_atm_cases
       call mpas_pool_get_config(configs, 'config_tc_vertical_grid', config_tc_vertical_grid)
       call mpas_pool_get_config(configs, 'config_specified_zeta_levels', config_specified_zeta_levels)
       call mpas_pool_get_config(configs, 'config_use_spechumd', config_use_spechumd)
+      call mpas_pool_get_config(configs, 'config_use_ozone', config_use_ozone)
       call mpas_pool_get_config(configs, 'config_nfglevels', config_nfglevels)
       call mpas_pool_get_config(configs, 'config_nfgsoillevels', config_nfgsoillevels)
       call mpas_pool_get_config(configs, 'config_smooth_surfaces', config_smooth_surfaces)
@@ -2910,6 +2913,7 @@ module init_atm_cases
       call mpas_pool_get_array(diag, 'surface_pressure', surface_pressure)
       call mpas_pool_get_array(diag, 'relhum', relhum)
       call mpas_pool_get_array(diag, 'spechum', spechum)
+      call mpas_pool_get_array(diag, 'o3mr', o3mr)
       call mpas_pool_get_array(diag, 'ru', ru)
       call mpas_pool_get_array(diag, 'rw', rw)
 
@@ -2955,6 +2959,7 @@ module init_atm_cases
       call mpas_pool_get_array(fg, 't', t_fg)
       call mpas_pool_get_array(fg, 'rh', rh_fg)
       call mpas_pool_get_array(fg, 'sh', sh_fg)
+      call mpas_pool_get_array(fg, 'o3', o3_fg)
       call mpas_pool_get_array(fg, 'gfs_z', gfs_z)
       call mpas_pool_get_array(fg, 'p', p_fg)
 
@@ -2963,6 +2968,11 @@ module init_atm_cases
       nz = nz1 + 1
 
       call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+
+      if (config_use_ozone) then
+         call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
+         call mpas_log_write('--- config_use_ozone = $l, index_qo3 = $i', logicArgs=(/config_use_ozone/), intArgs=(/index_qo3/))
+      end if
 
       xnutr = 0.
       zd = 12000.
@@ -3521,6 +3531,7 @@ module init_atm_cases
              trim(field % field) == 'TT' .or. &
              trim(field % field) == 'RH' .or. &
              trim(field % field) == 'SPECHUMD' .or. &
+             trim(field % field) == 'O3MR' .or. &
              trim(field % field) == 'GHT' .or. &
              trim(field % field) == 'PMSL' .or. &
              trim(field % field) == 'PSFC' .or. &
@@ -3731,6 +3742,13 @@ module init_atm_cases
                latPoints => latCell
                lonPoints => lonCell
                call mpas_pool_get_array(fg, 'sh', destField2d)
+               ndims = 2
+            else if (trim(field % field) == 'O3MR') then
+               call mpas_log_write('Interpolating O3MR at $i $r', intArgs=(/k/), realArgs=(/vert_level(k)/))
+               nInterpPoints = nCells
+               latPoints => latCell
+               lonPoints => lonCell
+               call mpas_pool_get_array(fg, 'o3', destField2d)
                ndims = 2
             else if (trim(field % field) == 'GHT') then
                call mpas_log_write('Interpolating GHT at $i $r', intArgs=(/k/), realArgs=(/vert_level(k)/))
@@ -5061,6 +5079,23 @@ call mpas_log_write('Done with soil consistency check')
          end do
 
 
+         ! O3MR: if first-guess values are negative, set those values to zero before
+         ! vertical interpolation.
+         sorted_arr(:,:) = -999.0
+         o3mr(:,iCell) = 0._RKIND
+         do k = 1, nfglevels_actual
+            sorted_arr(1,k) = z_fg(k,iCell)
+            if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
+            sorted_arr(2,k) = max(0._RKIND,o3_fg(k,iCell))
+         end do
+         call mpas_quicksort(nfglevels_actual, sorted_arr)
+         do k = nVertLevels, 1, -1
+            target_z = 0.5 * (zgrid(k,iCell) + zgrid(k+1,iCell))
+            o3mr(k,iCell) = vertical_interp(target_z, nfglevels_actual-1, &
+                                        sorted_arr(:,1:nfglevels_actual-1), order=1, extrap=0)
+         end do
+
+
          ! GHT
          sorted_arr(:,:) = -999.0
          do k = 1, nfglevels_actual
@@ -5204,6 +5239,15 @@ call mpas_log_write('Done with soil consistency check')
             enddo
          enddo
       endif
+
+      if(config_use_ozone) then
+         call mpas_log_write(' *** initializing ozone mixing ratio')
+         do iCell=1,nCells
+            do k=1,nVertLevels
+               scalars(index_qo3,k,iCell) = o3mr(k,iCell)
+            end do
+         end do
+      end if
 
       !
       ! After RH has been used to compute qv (unless config_use_spechumd = T and a valid spechum field
