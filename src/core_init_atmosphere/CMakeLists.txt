@@ -34,7 +34,6 @@ set(init_atm_core_srcs
         mpas_init_atm_gwd_gsl.F
         mpas_init_atm_hinterp.F
         mpas_init_atm_llxy.F
-        mpas_init_atm_o3mr.F
         mpas_init_atm_queue.F
         mpas_init_atm_read_met.F
         mpas_init_atm_static.F

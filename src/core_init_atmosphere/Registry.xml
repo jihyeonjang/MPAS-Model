@@ -216,6 +216,11 @@
                      description="Whether to use specific-humidity as the first-guess moisture variable. If this option is False, relative humidity will be used."
                      possible_values="true or false"/>
 
+                <nml_option name="config_use_ozone"          type="logical"       default_value="false"
+                     units="-"
+                     description="Whether to use ozone mixing ratio as the first-guess variable. If this option is False, ozone is not read for the initial condition."
+                     possible_values="true or false"/>
+
         </nml_record>
 
         <nml_record name="vertical_grid" in_defaults="true">
@@ -1261,7 +1266,7 @@
                      description="First guess specific humidity"
                      packages="first_guess_field"/>
 
-                <var name="o3mr_fg" name_in_code="o3" type="real" dimensions="nFGLevels nCells Time" units="kg kg^{-1}"
+                <var name="o3_fg" name_in_code="o3" type="real" dimensions="nFGLevels nCells Time" units="kg kg^{-1}"
                      description="First guess ozone mixing ratio"
                      packages="first_guess_field"/>
 
@@ -1420,6 +1425,10 @@
 
                 <var name="spechum" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
                      description="Specific humidity"
+                     packages="met_stage_out"/>
+
+                <var name="o3mr" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+                     description="Ozone mixing ratio"
                      packages="met_stage_out"/>
 
                 <!-- reconstructed horizontal velocity vectors at cell centers -->

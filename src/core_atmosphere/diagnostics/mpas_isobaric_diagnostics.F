@@ -38,7 +38,8 @@ module mpas_isobaric_diagnostics
     logical :: need_temp, need_relhum, need_dewpoint, need_w, need_uzonal, need_umeridional, need_vorticity, need_height
 
     logical :: need_diag_isobaric
-    logical :: need_u_diag_isobaric, need_v_diag_isobaric, need_t_diag_isobaric, need_q_diag_isobaric, need_z_diag_isobaric, need_w_diag_isobaric
+    logical :: need_u_plev, need_v_plev, need_t_plev, need_qv_plev, need_z_plev, need_w_plev
+    logical :: need_qo3_plev
 
 
     contains
@@ -306,18 +307,20 @@ module mpas_isobaric_diagnostics
         need_any_diags = need_any_diags .or. need_meanT_500_300
 
         need_diag_isobaric = .false.
-        need_u_diag_isobaric = MPAS_field_will_be_written('u_diag_isobaric')
-        need_diag_isobaric = need_diag_isobaric .or. need_u_diag_isobaric
-        need_v_diag_isobaric = MPAS_field_will_be_written('v_diag_isobaric')
-        need_diag_isobaric = need_diag_isobaric .or. need_v_diag_isobaric
-        need_t_diag_isobaric = MPAS_field_will_be_written('t_diag_isobaric')
-        need_diag_isobaric = need_diag_isobaric .or. need_t_diag_isobaric
-        need_q_diag_isobaric = MPAS_field_will_be_written('q_diag_isobaric')
-        need_diag_isobaric = need_diag_isobaric .or. need_q_diag_isobaric
-        need_z_diag_isobaric = MPAS_field_will_be_written('z_diag_isobaric')
-        need_diag_isobaric = need_diag_isobaric .or. need_z_diag_isobaric
-        need_w_diag_isobaric = MPAS_field_will_be_written('w_diag_isobaric')
-        need_diag_isobaric = need_diag_isobaric .or. need_w_diag_isobaric
+        need_u_plev = MPAS_field_will_be_written('u_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_u_plev
+        need_v_plev = MPAS_field_will_be_written('v_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_v_plev
+        need_t_plev = MPAS_field_will_be_written('t_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_t_plev
+        need_qv_plev = MPAS_field_will_be_written('qv_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_qv_plev
+        need_z_plev = MPAS_field_will_be_written('z_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_z_plev
+        need_w_plev = MPAS_field_will_be_written('w_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_w_plev
+        need_qo3_plev = MPAS_field_will_be_written('qo3_plev')
+        need_diag_isobaric = need_diag_isobaric .or. need_qo3_plev
         need_any_diags = need_any_diags .or. need_diag_isobaric
 
         if (need_any_diags) then
@@ -346,6 +349,7 @@ module mpas_isobaric_diagnostics
 
         integer :: nVertLevelsP1
         integer, pointer :: index_qv, num_scalars
+        integer, pointer :: index_qo3
         integer, dimension(:,:), pointer :: cellsOnVertex
        
         type (field2DReal), pointer:: pressure_p_field
@@ -365,12 +369,13 @@ module mpas_isobaric_diagnostics
         real (kind=RKIND), dimension(:,:), pointer :: z_isobaric
         real (kind=RKIND), dimension(:), pointer :: meanT_500_300
         real (kind=RKIND), dimension(:), pointer :: diag_iso_levels
-        real (kind=RKIND), dimension(:,:), pointer :: u_diag_isobaric
-        real (kind=RKIND), dimension(:,:), pointer :: v_diag_isobaric
-        real (kind=RKIND), dimension(:,:), pointer :: t_diag_isobaric
-        real (kind=RKIND), dimension(:,:), pointer :: q_diag_isobaric
-        real (kind=RKIND), dimension(:,:), pointer :: z_diag_isobaric
-        real (kind=RKIND), dimension(:,:), pointer :: w_diag_isobaric
+        real (kind=RKIND), dimension(:,:), pointer :: u_plev
+        real (kind=RKIND), dimension(:,:), pointer :: v_plev
+        real (kind=RKIND), dimension(:,:), pointer :: t_plev
+        real (kind=RKIND), dimension(:,:), pointer :: qv_plev
+        real (kind=RKIND), dimension(:,:), pointer :: z_plev
+        real (kind=RKIND), dimension(:,:), pointer :: w_plev
+        real (kind=RKIND), dimension(:,:), pointer :: qo3_plev
        
         real (kind=RKIND), dimension(:), pointer :: temperature_50hPa
         real (kind=RKIND), dimension(:), pointer :: temperature_100hPa
@@ -453,6 +458,7 @@ module mpas_isobaric_diagnostics
         real (kind=RKIND), dimension(:,:), allocatable :: pressure, pressureCp1, pressure2, pressure_v, temperature
         real (kind=RKIND), dimension(:,:), allocatable :: dewpoint
         real (kind=RKIND), dimension(:,:), allocatable :: qv
+        real (kind=RKIND), dimension(:,:), allocatable :: qo3
        
        !local interpolated fields:
         integer :: nIntP
@@ -475,6 +481,7 @@ module mpas_isobaric_diagnostics
         call mpas_pool_get_dimension(mesh, 'nIsoLevelsDiag', nIsoLevelsDiag)
 
         call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+        call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
         call mpas_pool_get_dimension(state, 'num_scalars', num_scalars)
        
         nVertLevelsP1 = nVertLevels + 1
@@ -506,12 +513,13 @@ module mpas_isobaric_diagnostics
         call mpas_pool_get_array(diag, 'meanT_500_300', meanT_500_300)
 
         call mpas_pool_get_array(diag, 'diag_iso_levels', diag_iso_levels)
-        call mpas_pool_get_array(diag, 'u_diag_isobaric', u_diag_isobaric)
-        call mpas_pool_get_array(diag, 'v_diag_isobaric', v_diag_isobaric)
-        call mpas_pool_get_array(diag, 't_diag_isobaric', t_diag_isobaric)
-        call mpas_pool_get_array(diag, 'q_diag_isobaric', q_diag_isobaric)
-        call mpas_pool_get_array(diag, 'z_diag_isobaric', z_diag_isobaric)
-        call mpas_pool_get_array(diag, 'w_diag_isobaric', w_diag_isobaric)
+        call mpas_pool_get_array(diag, 'u_plev', u_plev)
+        call mpas_pool_get_array(diag, 'v_plev', v_plev)
+        call mpas_pool_get_array(diag, 't_plev', t_plev)
+        call mpas_pool_get_array(diag, 'qv_plev', qv_plev)
+        call mpas_pool_get_array(diag, 'z_plev', z_plev)
+        call mpas_pool_get_array(diag, 'w_plev', w_plev)
+        call mpas_pool_get_array(diag, 'qo3_plev', qo3_plev)
        
         call mpas_pool_get_array(diag, 'temperature_50hPa', temperature_50hPa)
         call mpas_pool_get_array(diag, 'temperature_100hPa', temperature_100hPa)
@@ -592,8 +600,9 @@ module mpas_isobaric_diagnostics
         if(.not.allocated(pressure2)   ) allocate(pressure2(nVertLevelsP1,nCells)   )
         if(.not.allocated(pressure_v)  ) allocate(pressure_v(nVertLevels,nVertices) )
         if(.not.allocated(temperature) ) allocate(temperature(nVertLevels,nCells)   )
-        if(.not.allocated(dewpoint) ) allocate(dewpoint(nVertLevels,nCells)   )
-        if(.not.allocated(qv)          ) allocate(qv(nVertLevels,nCells)   )
+        if(.not.allocated(dewpoint)    ) allocate(dewpoint(nVertLevels,nCells)      )
+        if(.not.allocated(qv)          ) allocate(qv(nVertLevels,nCells)            )
+        if(.not.allocated(qo3)         ) allocate(qo3(nVertLevels,nCells)           )
        
         if (need_t_isobaric) then
             t_iso_levels(1) = 30000.0
@@ -724,7 +733,7 @@ module mpas_isobaric_diagnostics
         enddo
        
         if (NEED_TEMP .or. NEED_RELHUM .or. NEED_DEWPOINT .or. need_mslp &
-            .or. need_t_diag_isobaric ) then
+            .or. need_t_plev ) then
            !calculation of temperature at cell centers:
             do iCell = 1,nCells
             do k = 1,nVertLevels
@@ -741,11 +750,20 @@ module mpas_isobaric_diagnostics
             enddo
         end if
 
-        if (need_q_diag_isobaric) then
+        if (need_qv_plev) then
            !calculation of qv
             do iCell = 1,nCells
             do k = 1,nVertLevels
                 qv(k,iCell) = scalars(index_qv,k,iCell)
+            enddo
+            enddo
+        end if
+       
+        if (need_qo3_plev) then
+           !calculation of qo3
+            do iCell = 1,nCells
+            do k = 1,nVertLevels
+                qo3(k,iCell) = scalars(index_qo3,k,iCell)
             enddo
             enddo
         end if
@@ -1100,6 +1118,8 @@ module mpas_isobaric_diagnostics
 
 !!!!!!!!!!! over nVertLevels levels
 
+            ! allocate input variables
+
             allocate(field_in(nCells, nVertLevels))
             allocate(press_in(nCells, nVertLevels))
 
@@ -1114,6 +1134,7 @@ module mpas_isobaric_diagnostics
 
             ! zonal wind (uzonal)
 
+            if (need_u_plev) then
             do iCell=1,nCells
             do k=1,nVertLevels
                kk = nVertLevels+1-k
@@ -1124,11 +1145,13 @@ module mpas_isobaric_diagnostics
             call interp_tofixed_pressure(nCells, nVertLevels, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
 
             do k=1,nIsoLevelsDiag
-               u_diag_isobaric(k,1:nCells) = field_interp(1:nCells,k)
+               u_plev(k,1:nCells) = field_interp(1:nCells,k)
             end do
+            end if
 
             ! meridional wind (umeridional)
 
+            if (need_v_plev) then
             do iCell=1,nCells
             do k=1,nVertLevels
                kk = nVertLevels+1-k
@@ -1139,11 +1162,13 @@ module mpas_isobaric_diagnostics
             call interp_tofixed_pressure(nCells, nVertLevels, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
 
             do k=1,nIsoLevelsDiag
-               v_diag_isobaric(k,1:nCells) = field_interp(1:nCells,k)
+               v_plev(k,1:nCells) = field_interp(1:nCells,k)
             end do
+            end if
 
             ! temperature
 
+            if (need_t_plev) then
             do iCell=1,nCells
             do k=1,nVertLevels
                kk = nVertLevels+1-k
@@ -1154,11 +1179,13 @@ module mpas_isobaric_diagnostics
             call interp_tofixed_pressure(nCells, nVertLevels, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
 
             do k=1,nIsoLevelsDiag
-               t_diag_isobaric(k,1:nCells) = field_interp(1:nCells,k)
+               t_plev(k,1:nCells) = field_interp(1:nCells,k)
             end do
+            end if
 
             ! qv
 
+            if (need_qv_plev) then
             do iCell=1,nCells
             do k=1,nVertLevels
                kk = nVertLevels+1-k
@@ -1169,8 +1196,28 @@ module mpas_isobaric_diagnostics
             call interp_tofixed_pressure(nCells, nVertLevels, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
 
             do k=1,nIsoLevelsDiag
-               q_diag_isobaric(k,1:nCells) = field_interp(1:nCells,k)
+               qv_plev(k,1:nCells) = field_interp(1:nCells,k)
             end do
+            end if
+
+            ! qo3
+
+            if (need_qo3_plev) then
+            do iCell=1,nCells
+            do k=1,nVertLevels
+               kk = nVertLevels+1-k
+               field_in(iCell,kk) = qo3(k,iCell)
+            end do
+            end do
+
+            call interp_tofixed_pressure(nCells, nVertLevels, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
+
+            do k=1,nIsoLevelsDiag
+               qo3_plev(k,1:nCells) = field_interp(1:nCells,k)
+            end do
+            end if
+
+            ! deallocate input variables
 
             deallocate(field_in)
             deallocate(press_in)
@@ -1191,6 +1238,7 @@ module mpas_isobaric_diagnostics
 
             ! geopotential height
 
+            if (need_z_plev) then
             do iCell=1,nCells
             do k=1,nVertLevelsP1
                kk = nVertLevelsP1+1-k
@@ -1201,11 +1249,13 @@ module mpas_isobaric_diagnostics
             call interp_tofixed_pressure(nCells, nVertLevelsP1, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
 
             do k=1,nIsoLevelsDiag
-               z_diag_isobaric(k,1:nCells) = field_interp(1:nCells,k)
+               z_plev(k,1:nCells) = field_interp(1:nCells,k)
             end do
+            end if
 
             ! vertical velocity (w)
 
+            if (need_w_plev) then
             do iCell=1,nCells
             do k=1,nVertLevelsP1
                kk = nVertLevelsP1+1-k
@@ -1216,8 +1266,9 @@ module mpas_isobaric_diagnostics
             call interp_tofixed_pressure(nCells, nVertLevelsP1, nIsoLevelsDiag, press_in, field_in, press_interp, field_interp)
 
             do k=1,nIsoLevelsDiag
-               w_diag_isobaric(k,1:nCells) = field_interp(1:nCells,k)
+               w_plev(k,1:nCells) = field_interp(1:nCells,k)
             end do
+            end if
 
             deallocate(field_in)
             deallocate(press_in)
@@ -1229,7 +1280,9 @@ module mpas_isobaric_diagnostics
         if(allocated(temperature) ) deallocate(temperature )
         if(allocated(pressure2)   ) deallocate(pressure2   )
         if(allocated(pressure)    ) deallocate(pressure    )
-        if(allocated(dewpoint)    ) deallocate(dewpoint )
+        if(allocated(dewpoint)    ) deallocate(dewpoint    )
+        if(allocated(qv)          ) deallocate(qv          )
+        if(allocated(qo3)         ) deallocate(qo3         )
        
     end subroutine interp_diagnostics
 
