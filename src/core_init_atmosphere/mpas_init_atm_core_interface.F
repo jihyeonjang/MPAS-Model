@@ -124,6 +124,8 @@ module init_atm_core_interface
       integer, pointer :: config_init_case
       logical, pointer :: noahmp, config_noahmp_static
 
+      logical, pointer :: config_use_ozone !JHJ
+      logical, pointer :: met_ozone_in !JHJ
 
       ierr = init_atm_setup_packages_when(configs, packages)
       if (ierr /= 0) then
@@ -136,6 +138,7 @@ module init_atm_core_interface
       call mpas_pool_get_config(configs, 'config_native_gwd_gsl_static', config_native_gwd_gsl_static)
       call mpas_pool_get_config(configs, 'config_vertical_grid', config_vertical_grid)
       call mpas_pool_get_config(configs, 'config_met_interp', config_met_interp)
+      call mpas_pool_get_config(configs, 'config_use_ozone', config_use_ozone) !JHJ
 
       nullify(initial_conds)
       call mpas_pool_get_package(packages, 'initial_condsActive', initial_conds)
@@ -170,6 +173,11 @@ module init_atm_core_interface
       nullify(mp_thompson_aers_in)
       call mpas_pool_get_package(packages, 'mp_thompson_aers_inActive', mp_thompson_aers_in)
 
+!++JHJ
+      nullify(met_ozone_in)
+      call mpas_pool_get_package(packages, 'met_ozone_inActive', met_ozone_in)
+!--JHJ
+
       if (.not. associated(initial_conds) .or. &
           .not. associated(sfc_update) .or. &
           .not. associated(gwd_stage_in) .or. &
@@ -179,7 +187,11 @@ module init_atm_core_interface
           .not. associated(vertical_stage_out) .or. &
           .not. associated(met_stage_in) .or. &
           .not. associated(met_stage_out) .or. &
+!++JHJ
+          .not. associated(met_ozone_in) .or. &
           .not. associated(mp_thompson_aers_in)) then
+!org          .not. associated(mp_thompson_aers_in)) then
+!--JHJ
          call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_ERR)
          call mpas_log_write('* Error while setting up packages for init_atmosphere core.',                      messageType=MPAS_LOG_ERR)
          call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_ERR)
@@ -229,6 +241,11 @@ module init_atm_core_interface
          mp_thompson_aers_in = .false.
          inquire(file="QNWFA_QNIFA_SIGMA_MONTHLY.dat",exist=lexist)
          if((lexist .and. met_stage_out) .or. (lexist .and. met_stage_in)) mp_thompson_aers_in = .true.
+
+!++JHJ
+         met_ozone_in = .false.
+         if (config_use_ozone) met_ozone_in = .true.
+!--JHJ
 
       else if (config_init_case == 8) then
          gwd_stage_in = .false.

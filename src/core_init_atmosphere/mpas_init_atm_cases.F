@@ -2754,6 +2754,11 @@ module init_atm_cases
       !  calculation of the water vapor mixing ratio:
       real (kind=RKIND) :: sh_max,sh_min,global_sh_max,global_sh_min
 
+!++JHJ
+      !  calculation of the ozone mixing ratio to check if it is found in met data:
+      real (kind=RKIND) :: o3_max,o3_min,global_o3_max,global_o3_min
+!--JHJ
+
       character (len=StrKIND), pointer :: config_met_prefix
       character (len=StrKIND), pointer :: config_start_time
       logical, pointer :: config_met_interp
@@ -2971,7 +2976,6 @@ module init_atm_cases
 
       if (config_use_ozone) then
          call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
-         call mpas_log_write('--- config_use_ozone = $l, index_qo3 = $i', logicArgs=(/config_use_ozone/), intArgs=(/index_qo3/))
       end if
 
       xnutr = 0.
@@ -5240,8 +5244,34 @@ call mpas_log_write('Done with soil consistency check')
          enddo
       endif
 
+!++JHJ
+      ! check for ozone mixing ratio
       if(config_use_ozone) then
+         global_o3_min = 0._RKIND
+         global_o3_max = 0._RKIND
+         o3_min = minval(o3mr(:,1:nCellsSolve))
+         o3_max = maxval(o3mr(:,1:nCellsSolve))
+         call mpas_dmpar_min_real(dminfo,o3_min,global_o3_min)
+         call mpas_dmpar_max_real(dminfo,o3_max,global_o3_max)
+
+         call mpas_log_write('--- config_use_ozone = $l, index_qo3 = $i', logicArgs=(/config_use_ozone/), intArgs=(/index_qo3/))
+         call mpas_log_write('--- global_o3_min = $r', realArgs=(/global_o3_min/))
+         call mpas_log_write('--- global_o3_max = $r', realArgs=(/global_o3_max/))
+
+         if (global_o3_min==0._RKIND .and. global_o3_max==0._RKIND) then
+            call mpas_log_write('********************************************************************************', &
+                                messageType=MPAS_LOG_ERR)
+            call mpas_log_write('config_use_ozone = $l, but ozone mixing ratio (O3MR) was not found', &
+                                logicArgs=(/config_use_ozone/), messageType=MPAS_LOG_ERR)
+            call mpas_log_write('in '//trim(config_met_prefix)//':'//config_start_time(1:13),  &
+                                messageType=MPAS_LOG_ERR)
+            call mpas_log_write('********************************************************************************', &
+                                messageType=MPAS_LOG_CRIT)
+         end if
+!--JHJ
+
          call mpas_log_write(' *** initializing ozone mixing ratio')
+         call mpas_log_write('')
          do iCell=1,nCells
             do k=1,nVertLevels
                scalars(index_qo3,k,iCell) = o3mr(k,iCell)

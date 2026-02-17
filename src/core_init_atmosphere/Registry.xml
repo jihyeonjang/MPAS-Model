@@ -391,6 +391,7 @@
                 <package name="first_guess_field" description="3-d atmospheric or land-surface fields on first-guess levels"/>
                 <package name="mp_thompson_aers_in" description="initialization of GOCART-based Thompson water- and ice-friendly aerosols"/>
                 <package name="noahmp" description="Whether to process, read, and write static fields only required by Noah-MP"/>
+                <package name="met_ozone_in" description="Active only if ozone mixing ratio is being interpolated"/>
         </packages>
 
 
@@ -607,7 +608,7 @@
                         <var name="v_init" packages="met_stage_out"/>
                         <var name="t_init" packages="met_stage_out"/>
                         <var name="qv_init" packages="met_stage_out"/>
-                        <var_array name="scalars" packages="met_stage_out;mp_thompson_aers_in"/>
+                        <var_array name="scalars" packages="met_stage_out;met_ozone_in;mp_thompson_aers_in"/>
                         <var name="u" packages="met_stage_out"/>
                         <var name="w" packages="met_stage_out"/>
                         <var name="dz" packages="met_stage_out"/>
@@ -1180,7 +1181,8 @@
                              description="Rain water mixing ratio"/>
 
                         <var name="qo3" array_group="passive" units="kg kg^{-1}"
-                             description="Ozone mixing ratio"/>
+                             description="Ozone mixing ratio"
+                             packages="met_ozone_in"/>
 
                         <var name="nifa" array_group="number" units="nb kg^{-1}"
                              description="Gocart ice-friendly aerosol number concentration"
