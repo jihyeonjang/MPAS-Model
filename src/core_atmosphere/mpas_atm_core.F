@@ -1027,17 +1027,16 @@ module atm_core
       call mpas_get_timeInterval(interval=xtimeTime, S=s, S_n=s_n, S_d=s_d, ierr=ierr)         
       xtime_s = (s + s_n / s_d)
 
-
 #ifdef DO_PHYSICS
-#ifdef DO_CHEMISTRY
-      call chemistry_timetracker(domain,clock)
-      call chemistry_driver(domain)
-#endif
       !proceed with physics if moist_physics is set to true:
       if(moist_physics) then
          call physics_timetracker(domain,dt,clock,itimestep,xtime_s)
          call physics_driver(domain,itimestep,xtime_s)
       endif
+#ifdef DO_CHEMISTRY
+      call chemistry_timetracker(domain,clock)
+      call chemistry_driver(domain)
+#endif
 #endif
 
       call atm_timestep(domain, dt, currTime, itimestep, exchange_halo_group)

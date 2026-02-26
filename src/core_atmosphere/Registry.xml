@@ -1797,6 +1797,19 @@
                 <var name="pressure_p" type="real" dimensions="nVertLevels nCells Time" units="Pa"
                      description="Perturbation pressure"/>
 
+                <!-- JHJ                                                                                                 -->
+                <var name="rqo3totten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                     description="total tendency of ozone mixing ratio"
+                     packages="chem2dopp_in"/>
+
+                <var name="qo3old" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+                     description="ozone mixing ratio at time level 1"
+                     packages="chem2dopp_in"/>
+
+                <var name="qo3new" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+                     description="ozone mixing ratio at time level 2"
+                     packages="chem2dopp_in"/>
+
                 <!-- Diagnostic fields: only written to output                                                           -->
                 <!-- NOTE: added the "r" option to rho,theta,uReconstructZonal,and uReconstructMeridional for use of the -->
                 <!-- non-hydrostatic dynamical core in a data assimilation framework. NOTE that the "r" option is not    -->

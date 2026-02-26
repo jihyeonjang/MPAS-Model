@@ -466,6 +466,18 @@ module mpas_isobaric_diagnostics
         real (kind=RKIND), dimension(:,:), allocatable :: field_in,press_in
         real (kind=RKIND), dimension(:,:), allocatable :: field_interp,press_interp
         
+!++JHJ
+        integer, pointer :: index_qc
+        integer, pointer :: index_qr
+        integer, pointer :: index_qi
+        integer, pointer :: index_qs
+        integer, pointer :: index_qg
+        integer, pointer :: index_ni
+        integer, pointer :: index_nr
+        integer, pointer :: index_nc
+
+        real (kind=RKIND) :: o3_max,o3_min
+!--JHJ
        !--------------------------------------------------------------------------------------------------
        
        ! call mpas_log_write('')
@@ -483,6 +495,16 @@ module mpas_isobaric_diagnostics
         call mpas_pool_get_dimension(state, 'index_qv', index_qv)
         call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
         call mpas_pool_get_dimension(state, 'num_scalars', num_scalars)
+!++JHJ
+        call mpas_pool_get_dimension(state, 'index_qc', index_qc)
+        call mpas_pool_get_dimension(state, 'index_qr', index_qr)
+        call mpas_pool_get_dimension(state, 'index_qi', index_qi)
+        call mpas_pool_get_dimension(state, 'index_qs', index_qs)
+        call mpas_pool_get_dimension(state, 'index_qg', index_qg)
+        call mpas_pool_get_dimension(state, 'index_ni', index_ni)
+        call mpas_pool_get_dimension(state, 'index_nr', index_nr)
+        call mpas_pool_get_dimension(state, 'index_nc', index_nc)
+!--JHJ
        
         nVertLevelsP1 = nVertLevels + 1
        
@@ -760,12 +782,49 @@ module mpas_isobaric_diagnostics
         end if
        
         if (need_qo3_plev) then
-           !calculation of qo3
+            !initialization
             do iCell = 1,nCells
             do k = 1,nVertLevels
-                qo3(k,iCell) = scalars(index_qo3,k,iCell)
+                qo3(k,iCell) = 0._RKIND
             enddo
             enddo
+
+            if ( index_qo3 .gt. -1 ) then
+                call mpas_log_write('--- num_scalars = $i', intArgs=(/ num_scalars /))
+                call mpas_log_write('--- index_qv = $i', intArgs=(/ index_qv /))
+                call mpas_log_write('--- index_qc = $i', intArgs=(/ index_qc /))
+                call mpas_log_write('--- index_qr = $i', intArgs=(/ index_qr /))
+                call mpas_log_write('--- index_qi = $i', intArgs=(/ index_qi /))
+                call mpas_log_write('--- index_qs = $i', intArgs=(/ index_qs /))
+                call mpas_log_write('--- index_qg = $i', intArgs=(/ index_qg /))
+                call mpas_log_write('--- index_ni = $i', intArgs=(/ index_ni /))
+                call mpas_log_write('--- index_nr = $i', intArgs=(/ index_nr /))
+                call mpas_log_write('--- index_nc = $i', intArgs=(/ index_nc /))
+                call mpas_log_write('--- index_qo3 = $i', intArgs=(/ index_qo3 /))
+                !calculation of qo3
+                do iCell = 1,nCells
+                do k = 1,nVertLevels
+                    qo3(k,iCell) = scalars(index_qo3,k,iCell)
+                enddo
+                enddo
+            else
+                call mpas_log_write('********************************************************************************')
+                call mpas_log_write('Error in mpas_isobaric_diagnostics: qo3 is not available (index_qo3=$i)', &
+                                intArgs=(/ index_qo3 /))
+                call mpas_log_write('set : config_o3prognostic = true to get correct qo3_plev ')
+                call mpas_log_write('   if config_o3prognostic = false, qo3_plev will be all zero.')
+                call mpas_log_write('********************************************************************************')
+            end if
+
+            o3_min = minval(qo3(:,1:nCells))
+            o3_max = maxval(qo3(:,1:nCells))
+            if ( o3_min == 0._RKIND ) then
+               call mpas_log_write('--- o3_min = $r', realArgs=(/o3_min/))
+            end if
+            if ( o3_max == 0._RKIND ) then
+               call mpas_log_write('--- o3_max = $r', realArgs=(/o3_max/))
+            end if
+
         end if
        
        !interpolation to fixed pressure levels for fields located at cells centers and at mass points:
@@ -1309,17 +1368,19 @@ module mpas_isobaric_diagnostics
     real(kind=RKIND):: dpl,dpu
    
    !--------------------------------------------------------------------------------------------------
-   
-   !call mpas_log_write('')
-   !call mpas_log_write('--- enter subroutine interp_tofixed_pressure:')
-   !call mpas_log_write('... ncol     = $i',intArgs=(/ncol/))
-   !call mpas_log_write('... nlev_in  = $i',intArgs=(/nlev_in/))
-   !call mpas_log_write('... nlev_out = $i',intArgs=(/nlev_out/))
-   !i1=1 ; i2=ncol
-   !do k = 1, nlev_in
-   !   call mpas_log_write('$i $r $r $r $r', intArgs=(/k/), realArgs=(/pres_in(i1,k),field_in(i1,k),pres_in(i2,k),field_in(i2,k)/))
-   !enddo
-   !call mpas_log_write('')
+
+!++JHJ
+   call mpas_log_write('')
+   call mpas_log_write('--- enter subroutine interp_tofixed_pressure:')
+   call mpas_log_write('... ncol     = $i',intArgs=(/ncol/))
+   call mpas_log_write('... nlev_in  = $i',intArgs=(/nlev_in/))
+   call mpas_log_write('... nlev_out = $i',intArgs=(/nlev_out/))
+   i1=1 ; i2=ncol
+   do k = 1, nlev_in
+      call mpas_log_write('$i $r $r $r $r', intArgs=(/k/), realArgs=(/pres_in(i1,k),field_in(i1,k),pres_in(i2,k),field_in(i2,k)/))
+   enddo
+   call mpas_log_write('')
+!--JHJ
    
     do icol = 1, ncol
        kupper(icol) = 1

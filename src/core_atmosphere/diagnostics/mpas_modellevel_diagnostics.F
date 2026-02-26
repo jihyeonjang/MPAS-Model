@@ -9,6 +9,8 @@ module mpas_modellevel_diagnostics
     use mpas_derived_types, only : MPAS_pool_type, MPAS_clock_type
     use mpas_kind_types, only : RKIND
     use mpas_constants, only : rvord
+    use mpas_log, only : mpas_log_write
+
 
     type (MPAS_pool_type), pointer :: mesh
     type (MPAS_pool_type), pointer :: state
@@ -16,6 +18,8 @@ module mpas_modellevel_diagnostics
     type (MPAS_pool_type), pointer :: diag_physics
 
     type (MPAS_clock_type), pointer :: clock
+
+    logical, pointer :: config_o3prognostic, config_o3climatology
 
     public :: modellevel_diagnostics_setup, &
               modellevel_diagnostics_compute
@@ -37,13 +41,14 @@ module mpas_modellevel_diagnostics
     !>  reuse in this module
     !
     !-----------------------------------------------------------------------
-    subroutine modellevel_diagnostics_setup(all_pools, simulation_clock)
+    subroutine modellevel_diagnostics_setup(configs, all_pools, simulation_clock)
 
         use mpas_derived_types, only : MPAS_pool_type, MPAS_clock_type
-        use mpas_pool_routines, only : mpas_pool_get_subpool
+        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_config
 
         implicit none
 
+        type (MPAS_pool_type), pointer :: configs
         type (MPAS_pool_type), pointer :: all_pools
         type (MPAS_clock_type), pointer :: simulation_clock
 
@@ -54,6 +59,8 @@ module mpas_modellevel_diagnostics
         call mpas_pool_get_subpool(all_pools, 'diag', diag)
         call mpas_pool_get_subpool(all_pools, 'diag_physics', diag_physics)
 
+        call mpas_pool_get_config(configs,'config_o3prognostic', config_o3prognostic)
+        call mpas_pool_get_config(configs,'config_o3climatology',config_o3climatology)
         !call mpas_pool_get_array(diag, 'temperature', temperature)
         !call mpas_pool_get_array(diag, 'spechum', spechum)
         !
@@ -81,7 +88,8 @@ module mpas_modellevel_diagnostics
     subroutine modellevel_diagnostics_compute()
 
         use mpas_atm_diagnostics_utils, only : MPAS_field_will_be_written
-        use mpas_pool_routines, only : mpas_pool_get_dimension, mpas_pool_get_array
+        use mpas_pool_routines, only : mpas_pool_get_dimension, &
+                                       mpas_pool_get_array
 
         implicit none
 
@@ -157,11 +165,25 @@ module mpas_modellevel_diagnostics
 
         if (need_o3vmr) then
         if ( index_qo3 .gt. -1 ) then
+           call mpas_log_write('********************************************************************************')
+           call mpas_log_write('mpas_modellevel_diagnostics: o3vmr is from scalars(index_qo3,:,:), index_qo3=$i', intArgs=(/ index_qo3 /))
+           call mpas_log_write('config_o3prognostic = $l',logicArgs=(/ config_o3prognostic /))
+           call mpas_log_write('********************************************************************************')
            do iCell=1,nCellsSolve
            do k=1,nVertLevels
               o3vmr(k,iCell) = scalars(index_qo3,k,iCell)*amdo
            end do
            end do
+        else
+           call mpas_log_write('********************************************************************************')
+           call mpas_log_write('mpas_modellevel_diagnostics: o3vmr is ')
+           if ( config_o3climatology ) then
+               call mpas_log_write('from o3 climatology. config_o3climatology = $l',logicArgs=(/ config_o3climatology /))
+           else
+               call mpas_log_write('zero (default value). config_o3climatology = $l',logicArgs=(/ config_o3climatology /))
+           end if
+           call mpas_log_write('********************************************************************************')
+
         end if
         end if
          

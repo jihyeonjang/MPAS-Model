@@ -768,7 +768,6 @@ module atm_time_integration
       character (len=StrKIND), pointer :: config_time_integration
       logical, pointer :: config_apply_lbcs_ptr
 
-
       clock => domain % clock
       block => domain % blocklist
 
@@ -880,6 +879,13 @@ module atm_time_integration
 
       real (kind=RKIND), dimension(:,:), pointer :: rqvdynten, rthdynten, theta_m
       real (kind=RKIND) :: theta_local, fac_m
+!++JHJ
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalars_old
+      real (kind=RKIND), dimension(:,:), pointer :: qo3old,qo3new
+      real (kind=RKIND), dimension(:,:), pointer :: rqo3totten
+      integer, pointer :: index_qo3
+      logical, pointer :: config_o3prognostic
+!--JHJ
 
 #ifndef MPAS_CAM_DYCORE
       ! Used in allocating scratch fields for physics tendencies
@@ -1114,6 +1120,24 @@ module atm_time_integration
       tend_rho_physics(:,:) = 0.0_RKIND
 #endif
 #endif
+
+!++JHJ
+      call mpas_pool_get_config(block % configs, 'config_o3prognostic', config_o3prognostic)
+
+      if (config_o3prognostic) then
+         call mpas_pool_get_array(state, 'scalars', scalars_old, 1)
+         call mpas_pool_get_array(diag, 'qo3old', qo3old)
+         call mpas_pool_get_array(diag, 'qo3new', qo3new)
+         call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
+
+         qo3old(:,:) = 0.0_RKIND
+         qo3new(:,:) = 0.0_RKIND
+
+         if (index_qo3 .gt. 0) then
+            qo3old(:,:) =  scalars_old(index_qo3,:,:)
+         end if
+      end if
+!--JHJ
 
       !
       ! IAU - Incremental Analysis Update
@@ -1668,6 +1692,17 @@ module atm_time_integration
          end do
 
       end if
+!++JHJ
+      call mpas_pool_get_array(diag, 'rqo3totten', rqo3totten)
+      call mpas_log_write('JHJ compute rqo3totten $l rk_step=$i',logicArgs=(/config_o3prognostic/),intArgs=(/rk_step/))
+
+      if (config_o3prognostic .and. index_qo3 .gt. 0) then
+         qo3new(:,:) =  scalars_2(index_qo3,:,:)
+         rqo3totten(:,:) = ( scalars_2(index_qo3,:,:) - qo3old(:,:) ) / dt
+      else
+         rqo3totten(:,:) = 0._RKIND
+      end if
+!--JHJ
 
       !simply set to zero negative mixing ratios of different water species (for now):
       where ( scalars_2(:,:,:) < 0.0)  &

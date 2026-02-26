@@ -60,8 +60,8 @@
  integer:: errflg
  integer:: time_lev
 
- real(kind=RKIND):: dt,grav
- real(kind=RKIND),dimension(:,:),pointer:: qoz,temp
+! real(kind=RKIND):: dt,grav
+! real(kind=RKIND),dimension(:,:),pointer:: qoz,temp
 
 !-----------------------------------------------------------------------------------------------------------------
 

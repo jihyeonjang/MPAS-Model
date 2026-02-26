@@ -66,7 +66,7 @@
  call mpas_pool_get_dimension(state,'index_qo3'  ,index_qo3  )
 
  call mpas_pool_get_array(tend,'scalars_tend',tend_scalars)
- tend_scalars(index_qo3,:,:) = 0._RKIND
+!JHJ already applied in physics_get_tend tend_scalars(index_qo3,:,:) = 0._RKIND
 
  call mpas_pool_get_dimension(mesh,'nCells'     ,nCells     )
  call mpas_pool_get_dimension(mesh,'nCellsSolve',nCellsSolve)
