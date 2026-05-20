@@ -10036,7 +10036,7 @@ CONTAINS
                        swupt,swuptc,swdnt,swdntc,                      &
                        swupb,swupbc,swdnb,swdnbc,                      &
                        swupflx, swupflxc, swdnflx, swdnflxc,           &
-                       swddir,swddni,swddif,julian,                    &
+                       swddir,swddni,swddif,julian, pii,               &
                        ids,ide, jds,jde, kds,kde,                      & 
                        ims,ime, jms,jme, kms,kme,                      &
                        its,ite, jts,jte, kts,kte                       &
@@ -10054,7 +10054,7 @@ CONTAINS
  integer,intent(in):: icloud,cldovrlp,idcor
  integer,intent(in):: has_reqc,has_reqi,has_reqs
  integer,intent(in),optional:: o3input
- real,intent(in):: julian
+ real,intent(in):: julian,pii
 
  real,intent(in):: radt,degrad,xtime,declin,solcon,gmt
  real,intent(in),dimension(ims:ime,jms:jme):: xlat,xlong
@@ -10201,11 +10201,15 @@ CONTAINS
        !    above or below the horizon (xt24 is the fractional part of simulation days plus half of radt in 
        !    units of minutes, julian is in days, and radt is in minutes). eot (equation of time) is a correction
        !    of mean solar time due to the difference between that time and the apparent solar time. 
+       !    eot is based on the second equation at https://gml.noaa.gov/grad/solcalc/solareqns.PDF
        !    do not call rrtmg_sw is night-time:
        dorrsw = .true.
-       da=6.2831853071795862*(julian-1.)/365.
-       eot=(0.000075+0.001868*cos(da)-0.032077*sin(da) &
-            -0.014615*cos(2*da)-0.04089*sin(2*da))*(229.18)
+       !da=6.2831853071795862*(julian-0.5)/365.
+       !eot=(0.000075+0.001868*cos(da)-0.032077*sin(da) &
+       !     -0.014615*cos(2*da)-0.04089*sin(2*da))*(229.18)
+       da  = 2.*pii*(julian-0.5)/365.
+       eot = 4.*180./pii*(0.000075+0.001868*cos(da)-0.032077*sin(da) &
+            -0.014615*cos(2*da)-0.040849*sin(2*da))
        xt24 = mod(xtime+radt*0.5,1440.)+eot
        tloctm = gmt + xt24/60. + xlong(i,j)/15.
        hrang = 15. * (tloctm-12.) * degrad
