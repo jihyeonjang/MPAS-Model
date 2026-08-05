@@ -1802,6 +1802,10 @@
                      description="total tendency of ozone mixing ratio"
                      packages="chem2dopp_in"/>
 
+                <var name="rqo3trspten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                     description="total tendency of ozone mixing ratio"
+                     packages="chem2dopp_in"/>
+
                 <var name="qo3old" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
                      description="ozone mixing ratio at time level 1"
                      packages="chem2dopp_in"/>

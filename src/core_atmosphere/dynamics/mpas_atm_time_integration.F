@@ -14,6 +14,11 @@
 #define MPAS_ACC_TIMER_STOP(X)
 #endif
 
+!++JHJ
+#undef QO3_NO_TRANSPORT
+#define DEBUG_QO3_DIAGNOSTICS
+!--JHJ
+
 module atm_time_integration
 
    use mpas_derived_types
@@ -3626,7 +3631,9 @@ module atm_time_integration
       integer, dimension(:), pointer :: bdyMaskCell, bdyMaskEdge    ! regional_MPAS addition
 
       logical :: local_advance_density
-
+!++JHJ
+      integer, pointer :: index_qo3
+!--JHJ
 
       if (present(advance_density)) then
          local_advance_density = advance_density
@@ -3667,6 +3674,9 @@ module atm_time_integration
 
       call mpas_pool_get_array(mesh, 'bdyMaskCell', bdyMaskCell)
       call mpas_pool_get_array(mesh, 'bdyMaskEdge', bdyMaskEdge)
+!++JHJ
+      call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
+!--JHJ
 
       call atm_advance_scalars_work(nCells, num_scalars, dt, &
              edgeStart, edgeEnd, &
@@ -3678,7 +3688,8 @@ module atm_time_integration
              bdyMaskCell, bdyMaskEdge, &
              nAdvCellsForEdge, advCellsForEdge, adv_coefs, adv_coefs_3rd, &
              nEdges, horiz_flux_arr, rk_step, config_time_integration_order, &
-             local_advance_density)
+             !local_advance_density) !org JHJ
+             local_advance_density, index_qo3) !JHJ
 
    end subroutine atm_advance_scalars
 
@@ -3721,7 +3732,8 @@ module atm_time_integration
              bdyMaskCell, bdyMaskEdge, &
              nAdvCellsForEdge, advCellsForEdge, adv_coefs, adv_coefs_3rd, &
              nEdges, horiz_flux_arr, rk_step, config_time_integration_order, &
-             advance_density)
+             !advance_density) !org JHJ
+             advance_density,index_qo3) !JHJ
 
       use mpas_atm_dimensions, only : nVertLevels
 
@@ -3730,6 +3742,9 @@ module atm_time_integration
       integer, intent(in) :: nCells           ! for allocating stack variables
       integer, intent(in) :: nEdges            ! for allocating stack variables
       integer, intent(in) :: num_scalars
+!++JHJ
+      integer, intent(in)                  :: index_qo3
+!--JHJ
       real (kind=RKIND), intent(in) :: dt
       integer, intent(in) :: edgeStart, edgeEnd
       integer, intent(in) :: cellSolveStart, cellSolveEnd
@@ -3769,6 +3784,9 @@ module atm_time_integration
       real (kind=RKIND) :: weight_time_old, weight_time_new
       real (kind=RKIND), dimension(num_scalars,nVertLevels) :: scalar_tend_column  ! local storage to accumulate tendency
       real (kind=RKIND) :: u_direction, u_positive, u_negative
+!++JHJ
+!      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: scalar_qo3_new
+!--JHJ
 
       flux4(q_im2, q_im1, q_i, q_ip1, ua) =                     &
           ua*( 7.*(q_i + q_im1) - (q_ip1 + q_im2) )/12.0
@@ -3910,6 +3928,14 @@ module atm_time_integration
       !$acc parallel wait
       !$acc loop gang worker private(scalar_tend_column, wdtn)
       do iCell=cellSolveStart,cellSolveEnd
+!++JHJ
+!         if (index_qo3 .gt. 0) then
+!            !$acc loop vector
+!            do k=1,nVertLevels
+!               scalar_qo3_new(k,iCell) = scalar_new(index_qo3,k,iCell)
+!            end do
+!         end if
+!--JHJ
 
          if(bdyMaskCell(iCell) <= nRelaxZone) then  ! specified zone for regional_MPAS is not updated in this routine
 
@@ -3975,12 +4001,40 @@ module atm_time_integration
             do k=1,nVertLevels
                do iScalar=1,num_scalars
                   rho_zz_new_inv = 1.0_RKIND / (weight_time_old*rho_zz_old(k,iCell) + weight_time_new*rho_zz_new(k,iCell))
+!++JHJ
+! ORG:                  scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*rho_zz_old(k,iCell) &
+! ORG:                        + dt*( scalar_tend_column(iScalar,k) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) ) * rho_zz_new_inv
+#ifdef QO3_NO_TRANSPORT
+                  if (index_qo3 .gt. 0 .and. iScalar == index_qo3) then
+                     ! keep OPP/source-sink tendency for qo3, but remove horizontal and vertical transport
+                     !v2
+                     !scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*rho_zz_old(k,iCell) &
+                     !      + dt*scalar_tend_save(iScalar,k,iCell) ) * rho_zz_new_inv
+                     !v3
+                     scalar_new(iScalar,k,iCell) = scalar_old(iScalar,k,iCell) &
+                           + dt*scalar_tend_save(iScalar,k,iCell) / rho_zz_old(k,iCell)
+                  else
+                     scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*rho_zz_old(k,iCell) &
+                           + dt*( scalar_tend_column(iScalar,k) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) ) * rho_zz_new_inv
+                  end if
+#else
                   scalar_new(iScalar,k,iCell) = (   scalar_old(iScalar,k,iCell)*rho_zz_old(k,iCell) &
                         + dt*( scalar_tend_column(iScalar,k) -rdnw(k)*(wdtn(iScalar,k+1)-wdtn(iScalar,k)) ) ) * rho_zz_new_inv
+#endif
+!--JHJ
                end do
             end do
 
          end if ! specified zone regional_MPAS test
+!++JHJ
+! v1
+!         if (index_qo3 .gt. 0) then
+!            !$acc loop vector
+!            do k=1,nVertLevels
+!               scalar_new(index_qo3,k,iCell) = scalar_qo3_new(k,iCell)
+!            end do
+!         end if
+!--JHJ
 
       end do
       !$acc end parallel
@@ -4060,6 +4114,10 @@ module atm_time_integration
       type (field3DReal), pointer :: scale
       real (kind=RKIND), dimension(:,:,:), pointer :: scale_arr
 
+!++JHJ
+      integer, pointer :: index_qo3
+!--JHJ
+
 
       call mpas_pool_get_config(configs, 'config_coef_3rd_order', coef_3rd_order)
 
@@ -4100,6 +4158,10 @@ module atm_time_integration
       call mpas_allocate_scratch_field(scale)
       call mpas_pool_get_array(halo_scratch, 'scale', scale_arr)
 
+!++JHJ
+      call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
+!--JHJ
+
       call atm_advance_scalars_mono_work(field_name, block, state, nCells, nEdges, num_scalars, dt, &
                                    cellStart, cellEnd, edgeStart, edgeEnd, &
                                    cellSolveStart, cellSolveEnd, &
@@ -4109,7 +4171,8 @@ module atm_time_integration
                                    advCellsForEdge, adv_coefs, adv_coefs_3rd, scalar_old, scalar_new, s_max, s_min, &
                                    wdtn, scale_arr, flux_arr, flux_upwind_tmp, flux_tmp, &
                                    bdyMaskCell, bdyMaskEdge, &
-                                   exchange_halo_group, advance_density, rho_zz_int)
+                                   !exchange_halo_group, advance_density, rho_zz_int) ! org JHJ
+                                   exchange_halo_group, advance_density, rho_zz_int, index_qo3)  ! JHJ
 
       call mpas_deallocate_scratch_field(scale)
 
@@ -4157,7 +4220,8 @@ module atm_time_integration
                                    advCellsForEdge, adv_coefs, adv_coefs_3rd, scalar_old, scalar_new, s_max, s_min, &
                                    wdtn, scale_arr, flux_arr, flux_upwind_tmp, flux_tmp, &
                                    bdyMaskCell, bdyMaskEdge, &
-                                   exchange_halo_group, advance_density, rho_zz_int)
+                                   !exchange_halo_group, advance_density, rho_zz_int) !org JHJ
+                                   exchange_halo_group, advance_density, rho_zz_int, index_qo3) !JHJ
 
       use mpas_atm_dimensions, only : nVertLevels
 
@@ -4169,6 +4233,9 @@ module atm_time_integration
       integer, intent(in)                  :: nCells           ! for allocating stack variables
       integer, intent(in)                  :: nEdges           ! for allocating stack variables
       integer, intent(in)                  :: num_scalars
+!++JHJ
+      integer, intent(in)                  :: index_qo3
+!--JHJ
       real (kind=RKIND), intent(in)        :: dt
       integer, intent(in) :: cellStart, cellEnd, edgeStart, edgeEnd
       integer, intent(in) :: cellSolveStart, cellSolveEnd
@@ -4202,6 +4269,19 @@ module atm_time_integration
       real (kind=RKIND), dimension(nVertLevels,2,nCells+1), intent(inout) :: scale_arr
       real (kind=RKIND), dimension(nVertLevels,nEdges+1), intent(inout) :: flux_arr
       real (kind=RKIND), dimension(nVertLevels,nEdges+1), intent(inout) :: flux_upwind_tmp, flux_tmp
+!++JHJ
+!  local for saving qo3 diagnostics/checkpoints
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: scalar_qo3_old, scalar_qo3_new
+      real (kind=RKIND), dimension(nVertLevels,nCells+1) :: scalar_qo3_init_old, scalar_qo3_init_new
+#ifdef DEBUG_QO3_DIAGNOSTICS
+      real (kind=RKIND) :: qo3_src_max_old, qo3_src_max_new
+      real (kind=RKIND) :: qo3_src_sum_old, qo3_src_sum_new
+      real (kind=RKIND) :: qo3_trans_max_old, qo3_trans_max_new
+      real (kind=RKIND) :: qo3_trans_sum_old, qo3_trans_sum_new
+      real (kind=RKIND) :: qo3_restore_max_old, qo3_restore_max_new
+      real (kind=RKIND) :: qo3_restore_sum_old, qo3_restore_sum_new
+#endif
+!--JHJ
 
       integer, parameter :: SCALE_IN = 1, SCALE_OUT = 2
 
@@ -4259,10 +4339,30 @@ module atm_time_integration
       if (local_advance_density) then
          !$acc enter data copyin(rho_zz_int)
       end if
-      !$acc enter data copyin(scalars_old, rho_zz_old, rdnw, uhAvg, wwAvg)
+      !$acc enter data copyin(scalars_old, scalars_new, rho_zz_old, rdnw, uhAvg, wwAvg)
+!++JHJ
+      !$acc enter data create(scalar_qo3_old, scalar_qo3_new, scalar_qo3_init_old, scalar_qo3_init_new)
+!--JHJ
       MPAS_ACC_TIMER_STOP('atm_advance_scalars_mono [ACC_data_xfer]')
 
       !$acc parallel
+
+!++JHJ
+!  Checkpoint A: qo3 before source/sink update.
+      !$acc loop gang worker
+      do iCell=cellSolveStart,cellSolveEnd
+
+         !$acc loop vector
+         do k = 1,nVertLevels
+
+            if (index_qo3 .gt. 0) then
+               scalar_qo3_init_old(k,iCell) = scalars_old(index_qo3,k,iCell)
+               scalar_qo3_init_new(k,iCell) = scalars_new(index_qo3,k,iCell)
+            end if
+         end do
+
+      end do
+!--JHJ
 
       !$acc loop gang worker
       do iCell=cellSolveStart,cellSolveEnd
@@ -4281,7 +4381,45 @@ module atm_time_integration
 
       end do
 
+!++JHJ
+!  Checkpoint B: qo3 after source/sink update, before transport.
+      !$acc loop gang worker
+      do iCell=cellSolveStart,cellSolveEnd
+
+         !$acc loop vector
+         do k = 1,nVertLevels
+
+            if (index_qo3 .gt. 0) then
+               scalar_qo3_old(k,iCell) = scalars_old(index_qo3,k,iCell)
+               scalar_qo3_new(k,iCell) = scalars_old(index_qo3,k,iCell)  !to update the effect of opp source/sink
+               !scalar_qo3_new(k,iCell) = scalars_new(index_qo3,k,iCell) !v1 JHJ
+            end if
+         end do
+
+      end do
+!--JHJ
+
       !$acc end parallel
+
+#ifdef DEBUG_QO3_DIAGNOSTICS
+      if (index_qo3 .gt. 0) then
+         !$acc update self(scalar_qo3_old, scalar_qo3_new, scalar_qo3_init_old, scalar_qo3_init_new)
+         qo3_src_max_old = 0.0_RKIND
+         qo3_src_max_new = 0.0_RKIND
+         qo3_src_sum_old = 0.0_RKIND
+         qo3_src_sum_new = 0.0_RKIND
+         do iCell=cellSolveStart,cellSolveEnd
+            do k = 1,nVertLevels
+               qo3_src_max_old = max(qo3_src_max_old, abs(scalar_qo3_old(k,iCell) - scalar_qo3_init_old(k,iCell)))
+               qo3_src_max_new = max(qo3_src_max_new, abs(scalar_qo3_new(k,iCell) - scalar_qo3_init_new(k,iCell)))
+               qo3_src_sum_old = qo3_src_sum_old + abs(scalar_qo3_old(k,iCell) - scalar_qo3_init_old(k,iCell))
+               qo3_src_sum_new = qo3_src_sum_new + abs(scalar_qo3_new(k,iCell) - scalar_qo3_init_new(k,iCell))
+            end do
+         end do
+         call mpas_log_write('JHJ qo3 source/sink d_old max/sum $r $r d_new max/sum $r $r', &
+                             realArgs=(/qo3_src_max_old, qo3_src_sum_old, qo3_src_max_new, qo3_src_sum_new/))
+      end if
+#endif
 
       MPAS_ACC_TIMER_START('atm_advance_scalars_mono [ACC_data_xfer]')
       !$acc exit data copyout(scalar_tend)
@@ -4352,7 +4490,7 @@ module atm_time_integration
       if (.not. local_advance_density) then
          !$acc enter data copyin(rho_zz_new)
       end if
-      !$acc enter data copyin(scalars_new, fnm, fnp)
+      !$acc enter data copyin(fnm, fnp)
       !$acc enter data create(scale_arr)
       MPAS_ACC_TIMER_STOP('atm_advance_scalars_mono [ACC_data_xfer]')
 
@@ -4857,6 +4995,66 @@ module atm_time_integration
 
       end do !  loop over scalars
 
+!++JHJ
+#ifdef DEBUG_QO3_DIAGNOSTICS
+      if (index_qo3 .gt. 0) then
+         !$acc update self(scalars_old, scalars_new, scalar_qo3_old, scalar_qo3_new)
+         qo3_trans_max_old = 0.0_RKIND
+         qo3_trans_max_new = 0.0_RKIND
+         qo3_trans_sum_old = 0.0_RKIND
+         qo3_trans_sum_new = 0.0_RKIND
+         do iCell=cellSolveStart,cellSolveEnd
+            do k = 1,nVertLevels
+               qo3_trans_max_old = max(qo3_trans_max_old, abs(scalars_old(index_qo3,k,iCell) - scalar_qo3_old(k,iCell)))
+               qo3_trans_max_new = max(qo3_trans_max_new, abs(scalars_new(index_qo3,k,iCell) - scalar_qo3_new(k,iCell)))
+               qo3_trans_sum_old = qo3_trans_sum_old + abs(scalars_old(index_qo3,k,iCell) - scalar_qo3_old(k,iCell))
+               qo3_trans_sum_new = qo3_trans_sum_new + abs(scalars_new(index_qo3,k,iCell) - scalar_qo3_new(k,iCell))
+            end do
+         end do
+         call mpas_log_write('JHJ qo3 transport d_old max/sum $r $r d_new max/sum $r $r', &
+                             realArgs=(/qo3_trans_max_old, qo3_trans_sum_old, qo3_trans_max_new, qo3_trans_sum_new/))
+      end if
+#endif
+
+#ifdef QO3_NO_TRANSPORT
+      !$acc parallel present(scalars_old, scalars_new, scalar_qo3_old, scalar_qo3_new)
+      !$acc loop gang worker
+      do iCell=cellSolveStart,cellSolveEnd
+
+         !$acc loop vector
+         do k = 1,nVertLevels
+
+            if (index_qo3 .gt. 0) then
+               scalars_old(index_qo3,k,iCell) = scalar_qo3_old(k,iCell)
+               scalars_new(index_qo3,k,iCell) = scalar_qo3_new(k,iCell)
+            end if
+         end do
+
+      end do
+      !$acc end parallel
+#endif
+
+#ifdef DEBUG_QO3_DIAGNOSTICS
+      if (index_qo3 .gt. 0) then
+         !$acc update self(scalars_old, scalars_new, scalar_qo3_old, scalar_qo3_new)
+         qo3_restore_max_old = 0.0_RKIND
+         qo3_restore_max_new = 0.0_RKIND
+         qo3_restore_sum_old = 0.0_RKIND
+         qo3_restore_sum_new = 0.0_RKIND
+         do iCell=cellSolveStart,cellSolveEnd
+            do k = 1,nVertLevels
+               qo3_restore_max_old = max(qo3_restore_max_old, abs(scalars_old(index_qo3,k,iCell) - scalar_qo3_old(k,iCell)))
+               qo3_restore_max_new = max(qo3_restore_max_new, abs(scalars_new(index_qo3,k,iCell) - scalar_qo3_new(k,iCell)))
+               qo3_restore_sum_old = qo3_restore_sum_old + abs(scalars_old(index_qo3,k,iCell) - scalar_qo3_old(k,iCell))
+               qo3_restore_sum_new = qo3_restore_sum_new + abs(scalars_new(index_qo3,k,iCell) - scalar_qo3_new(k,iCell))
+            end do
+         end do
+         call mpas_log_write('JHJ qo3 restore residual d_old max/sum $r $r d_new max/sum $r $r', &
+                             realArgs=(/qo3_restore_max_old, qo3_restore_sum_old, qo3_restore_max_new, qo3_restore_sum_new/))
+      end if
+#endif
+!--JHJ
+
       MPAS_ACC_TIMER_START('atm_advance_scalars_mono [ACC_data_xfer]')
       if (local_advance_density) then
          !$acc exit data copyout(rho_zz_int)
@@ -4866,6 +5064,9 @@ module atm_time_integration
       !$acc exit data copyout(scalars_new)
       !$acc exit data delete(scalars_old, scale_arr, rho_zz_old, wwAvg, &
       !$acc                  uhAvg, fnm, fnp, rdnw)
+!++JHJ
+      !$acc exit data delete(scalar_qo3_old, scalar_qo3_new, scalar_qo3_init_old, scalar_qo3_init_new)
+!--JHJ
 
       !$acc end data
       MPAS_ACC_TIMER_STOP('atm_advance_scalars_mono [ACC_data_xfer]')
