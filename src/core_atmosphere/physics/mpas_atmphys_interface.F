@@ -91,11 +91,13 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme,pbl_scheme
+ logical, pointer :: config_o3prognostic
 
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_pbl_scheme'   ,pbl_scheme   )
+ call mpas_pool_get_config(configs,'config_o3prognostic' ,config_o3prognostic )
 
  if(.not.allocated(psfc_p) ) allocate(psfc_p(ims:ime,jms:jme)         )
  if(.not.allocated(ptop_p) ) allocate(ptop_p(ims:ime,jms:jme)         )
@@ -146,6 +148,10 @@
     case default
  end select pbl_select
 
+ if (config_o3prognostic) then
+    if(.not.allocated(qo3_p)  ) allocate(qo3_p(ims:ime,kms:kme,jms:jme)  )
+ end if
+
 !... arrays used for calculating the hydrostatic pressure and exner function:
  if(.not.allocated(psfc_hyd_p)  ) allocate(psfc_hyd_p(ims:ime,jms:jme)          )
  if(.not.allocated(psfc_hydd_p) ) allocate(psfc_hydd_p(ims:ime,jms:jme)         )
@@ -166,11 +172,13 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme,pbl_scheme
+ logical, pointer :: config_o3prognostic
 
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_pbl_scheme'   ,pbl_scheme   )
+ call mpas_pool_get_config(configs,'config_o3prognostic' ,config_o3prognostic )
 
  if(allocated(psfc_p)  ) deallocate(psfc_p  )
  if(allocated(ptop_p)  ) deallocate(ptop_p  )
@@ -221,6 +229,10 @@
     case default
  end select pbl_select
 
+ if (config_o3prognostic) then
+    if(allocated(qo3_p)) deallocate(qo3_p)
+ end if
+
  if(allocated(psfc_hyd_p)  ) deallocate(psfc_hyd_p  )
  if(allocated(psfc_hydd_p) ) deallocate(psfc_hydd_p )
  if(allocated(pres_hyd_p)  ) deallocate(pres_hyd_p  )
@@ -249,9 +261,11 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme,pbl_scheme
+ logical, pointer :: config_o3prognostic
 
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs,index_qg
  integer,pointer:: index_nc,index_ni,index_nifa,index_nwfa
+ integer,pointer:: index_qo3
 
  real(kind=RKIND),dimension(:),pointer    :: latCell,lonCell
  real(kind=RKIND),dimension(:),pointer    :: fzm,fzp,rdzw
@@ -261,6 +275,7 @@
  real(kind=RKIND),dimension(:,:),pointer  :: rho_zz,theta_m,pressure_p,u,v,w
  real(kind=RKIND),dimension(:,:),pointer  :: qv,qc,qr,qi,qs,qg
  real(kind=RKIND),dimension(:,:),pointer  :: nc,ni,nifa,nwfa
+ real(kind=RKIND),dimension(:,:),pointer  :: qo3
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
 !local variables:
@@ -283,6 +298,7 @@
 !initialization:
  call mpas_pool_get_config(configs,'config_microp_scheme',microp_scheme)
  call mpas_pool_get_config(configs,'config_pbl_scheme'   ,pbl_scheme   )
+ call mpas_pool_get_config(configs,'config_o3prognostic' ,config_o3prognostic )
 
  call mpas_pool_get_array(mesh,'latCell',latCell)
  call mpas_pool_get_array(mesh,'lonCell',lonCell)
@@ -311,6 +327,7 @@
  call mpas_pool_get_dimension(state,'index_qi',index_qi)
  call mpas_pool_get_dimension(state,'index_qs',index_qs)
  call mpas_pool_get_dimension(state,'index_qg',index_qg)
+ call mpas_pool_get_dimension(state,'index_qo3',index_qo3)
 
  call mpas_pool_get_array(state,'scalars',scalars,time_lev)
  qv => scalars(index_qv,:,:)
@@ -353,6 +370,29 @@
  enddo
  enddo
  enddo
+
+!initialize the ozone mixing ratio if present in Registry:
+ if (config_o3prognostic) then
+    nullify(qo3)
+    if (index_qo3 .gt. -1) then
+       qo3 => scalars(index_qo3,:,:)
+       do j = jts,jte
+       do k = kts,kte
+       do i = its,ite
+          qo3_p(i,k,j) = qo3(k,i)
+       enddo
+       enddo
+       enddo
+    else
+       do j = jts,jte
+       do k = kts,kte
+       do i = its,ite
+          qo3_p(i,k,j) = 0._RKIND
+       enddo
+       enddo
+       enddo
+    end if
+ end if
 
  microp_select: select case(trim(microp_scheme))
     case("mp_thompson_aerosols")

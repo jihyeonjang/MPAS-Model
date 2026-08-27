@@ -53,20 +53,20 @@ physcore: mpas_atm_dimensions.o
 	( cd ../..; ln -sf ./src/core_atmosphere/physics/physics_wrf/files/*DATA* .)
 	( cd ../..; ln -sf ./src/core_atmosphere/physics/physics_noahmp/parameters/*TBL .)
 
-chemcore:
+chemcore: mpas_atm_dimensions.o
 	( cd chemistry; $(MAKE) all CHEMISTRY="$(CHEMISTRY)" )
 	( mkdir libchem; cd libchem; ar -x ../chemistry/libchem.a )
 
 dycore: mpas_atm_dimensions.o $(PHYSCORE) $(CHEMCORE)
-	( cd dynamics; $(MAKE) all PHYSICS="$(PHYSICS)" )
+	( cd dynamics; $(MAKE) all PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)" )
 
-diagcore: $(PHYSCORE) dycore
-	( cd diagnostics; $(MAKE) all PHYSICS="$(PHYSICS)" )
+diagcore: $(PHYSCORE) $(CHEMCORE) dycore
+	( cd diagnostics; $(MAKE) all PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)" )
 
 utilities: $(PHYSCORE)
 	( cd utils; $(MAKE) all PHYSICS="$(PHYSICS)" )
 
-atmcore: $(PHYSCORE) dycore diagcore $(OBJS)
+atmcore: $(PHYSCORE) $(CHEMCORE) dycore diagcore $(OBJS)
 	ar -ru libdycore.a $(OBJS) dynamics/*.o $(PHYS_OBJS) $(CHEM_OBJS) diagnostics/*.o
 
 mpas_atm_core_interface.o: mpas_atm_core.o
@@ -84,6 +84,7 @@ clean:
 	( cd ../..; rm -f *TBL )
 	( cd ../..; rm -f *DATA* )
 	$(RM) -r libphys
+	$(RM) -r libchem
 	$(RM) *.o *.mod *.f90 libdycore.a
 	$(RM) Registry_processed.xml
 	@# Certain systems with intel compilers generate *.i files

@@ -920,6 +920,9 @@
 			<var name="h_oml_initial"/>
 			<var name="hu_oml"/>
 			<var name="hv_oml"/>
+			<var name="OPPpres"/>
+			<var name="OPPdata"/>
+			<var name="OPPcoeffs"/>
 			<var_struct name="diag_physics_noahmp"/>
 #endif
 		</stream>
@@ -2020,6 +2023,11 @@
                      description="brightness temperature to calculate cloud top height; usually from geostationary IR window channel"
                      packages="jedi_da"/>
 
+                <!-- tendencies related to the prognostic ozone photochemistry parameterization scheme (OPP) -->
+                <var name="rqo3totten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                     description="total tendency of ozone mixing ratio"
+                     packages="chem2dopp_in"/>
+
         </var_struct>
 
         <var_struct name="tend" time_levs="1">
@@ -2288,6 +2296,11 @@
                      description="logical for configuration of input ozone data in RRMTG long- and short-wave radiation"
                      possible_values=".true. for using monthly-varying ozone data; .false. for using fixed vertical profile"/>
 
+                <nml_option name="config_o3prognostic" type="logical" default_value="false" in_defaults="false"
+                     units="-"
+                     description="logical for configuration of ozone as a prognostic variable"
+                     possible_values=".true. for using prognostic ozone scheme; .false. for using climatological ozone"/>
+
                 <nml_option name="config_microp_re" type="logical" default_value="false" in_defaults="false"
                      units="-"
                      description="logical for calculation of the effective radii for cloud water, cloud ice, and snow"
@@ -2347,6 +2360,10 @@
                      units="-"
                      description="time interval between updates of accumulated rain and radiation diagnostics"
                      possible_values="`DD_HH:MM:SS' or `none'"/>
+
+                <nml_option name="config_OPP_update" type="character" default_value="24:00:00" in_defaults="false"
+                     units="-"
+                     description="time interval between updates of the coefficients in the linearized CHEM2D-OPP"/>
 
                 <nml_option name="config_physics_suite" type="character" default_value="mesoscale_reference" in_defaults="true"
                      units="-"
@@ -3253,7 +3270,6 @@
                 <var name="swupflxc" type="real" dimensions="nVertLevelsP2 nCells Time" units="-"
                      description="-"/>
 
-
                 <!-- ================================================================================================== -->
                 <!-- ... PARAMETERIZATION OF LONGWAVE RADIATION:                                                        -->
                 <!-- ================================================================================================== -->
@@ -3353,7 +3369,6 @@
 
                 <var name="rre_snow" type="real" dimensions="nVertLevels nCells Time" units="microns"
                      description="effective radius of snow crystals calculated in RRTMG radiation"/>
-
 
                 <!-- ================================================================================================== -->
                 <!-- ... ADDITIONAL "RADIATION" ARRAYS NEEDED ONLY IN THE "CAM" LW AND SW RADIATION CODES:              -->
@@ -4018,4 +4033,9 @@
 #ifdef DO_PHYSICS
 #include "physics/Registry_noahmp.xml"
 #endif
+
+#ifdef DO_CHEMISTRY
+#include "chemistry/Registry_chems.xml"
+#endif
+
 </registry>

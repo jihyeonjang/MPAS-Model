@@ -203,7 +203,8 @@
     qr_p,             &!rain mixing ratio                                                   [kg/kg]
     qi_p,             &!cloud ice mixing ratio                                              [kg/kg]
     qs_p,             &!snow mixing ratio                                                   [kg/kg]
-    qg_p               !graupel mixing ratio                                                [kg/kg]
+    qg_p,             &!graupel mixing ratio                                                [kg/kg]
+    qo3_p              !ozone mixing ratio                                                  [kg/kg]
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
     nc_p,             &!cloud water droplet number concentration                             [#/kg]
@@ -232,7 +233,7 @@
 !=================================================================================================================
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
-    o3clim_p           !climatological ozone volume mixing ratio                         [???]
+    o3clim_p           !climatological ozone volume mixing ratio                          [mol/mol]
 
 !=================================================================================================================
 !... variables and arrays related to parameterization of cloud microphysics:

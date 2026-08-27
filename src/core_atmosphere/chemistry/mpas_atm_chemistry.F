@@ -23,7 +23,8 @@ module mpas_atm_chemistry
 
     private
 
-    public :: chemistry_init, chemistry_step, chemistry_finalize
+    !public :: chemistry_init, chemistry_step, chemistry_finalize
+    public :: chemistry_init_musica, chemistry_step, chemistry_finalize !JHJ
 
     contains
 
@@ -37,7 +38,8 @@ module mpas_atm_chemistry
     !>  This routine initializes the chemistry packages, setting up
     !>  necessary parameters and data structures for the simulation.
     !------------------------------------------------------------------------
-    subroutine chemistry_init(configs, dimensions)
+    !subroutine chemistry_init(configs, dimensions)
+    subroutine chemistry_init_musica(configs, dimensions) !JHJ
 
 #ifdef MPAS_USE_MUSICA
         use mpas_musica, only: musica_init
@@ -73,7 +75,8 @@ module mpas_atm_chemistry
         end if
 #endif
 
-    end subroutine chemistry_init
+    !end subroutine chemistry_init
+    end subroutine chemistry_init_musica !JHJ
 
 
     !------------------------------------------------------------------------

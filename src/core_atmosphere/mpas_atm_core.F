@@ -37,7 +37,9 @@ module atm_core
       use mpas_string_utils, only : mpas_string_replace
       use mpas_atm_halos, only: atm_build_halo_groups, exchange_halo_group
 #ifdef DO_CHEMISTRY
-      use mpas_atm_chemistry, only: chemistry_init
+#ifdef MPAS_USE_MUSICA
+      use mpas_atm_chemistry, only: chemistry_init_musica
+#endif
 #endif
 
       implicit none
@@ -290,7 +292,9 @@ module atm_core
       ! Initialize the chemistry package
       !
 #ifdef DO_CHEMISTRY
-      call chemistry_init(domain % blocklist % configs, domain % blocklist % dimensions)
+#ifdef MPAS_USE_MUSICA
+      call chemistry_init_musica(domain % blocklist % configs, domain % blocklist % dimensions)
+#endif
 #endif
 
    end function atm_core_init
@@ -376,6 +380,10 @@ module atm_core
       use mpas_atmphys_init
       use mpas_atmphys_manager
 #endif
+#ifdef DO_CHEMISTRY
+      use mpas_chemistry_init
+      use mpas_chemistry_manager
+#endif
 
       implicit none
    
@@ -395,6 +403,9 @@ module atm_core
       type (mpas_pool_type), pointer :: ngw_input
       type (mpas_pool_type), pointer :: atm_input
       type (mpas_pool_type), pointer :: output_noahmp
+#ifdef DO_CHEMISTRY
+      type (mpas_pool_type), pointer :: chem_input
+#endif
 
       integer :: iCell,iEdge,iVertex,k
       
@@ -594,6 +605,12 @@ module atm_core
          call physics_init(dminfo, stream_manager, clock, block % configs, mesh, diag, tend, tend_physics, state, 1, &
                            diag_physics, diag_physics_noahmp, ngw_input, atm_input, sfc_input, output_noahmp)
       endif
+#endif
+#ifdef DO_CHEMISTRY
+      call mpas_pool_get_subpool(block % structs, 'chem_input', chem_input)
+
+!      call chemistry_run_init(block % configs, clock)
+      call chemistry_init(block % configs, clock, mesh, chem_input)
 #endif
    
       call atm_compute_mesh_scaling(mesh, block % configs)
@@ -1002,7 +1019,11 @@ module atm_core
       use mpas_atmphys_update
 #endif
 #ifdef DO_CHEMISTRY
+#ifdef MPAS_USE_MUSICA
       use mpas_atm_chemistry, only: chemistry_step
+#endif
+      use mpas_chemistry_driver,only : chemistry_driver
+      use mpas_chemistry_manager,only: chemistry_timetracker
 #endif
       use mpas_atm_halos, only: exchange_halo_group
 
@@ -1038,7 +1059,11 @@ module atm_core
 #endif
 
 #ifdef DO_CHEMISTRY
-      call chemistry_step()
+#ifdef MPAS_USE_MUSICA
+      call chemistry_step() !musica
+#endif
+      call chemistry_timetracker(domain,clock) !JHJ need to add if statement? 
+      call chemistry_driver(domain)
 #endif
 
       call atm_timestep(domain, dt, currTime, itimestep, exchange_halo_group)
@@ -1060,7 +1085,9 @@ module atm_core
 #endif
 
 #ifdef DO_CHEMISTRY
+#ifdef MPAS_USE_MUSICA
       use mpas_atm_chemistry, only: chemistry_finalize
+#endif
 #endif
 
       implicit none
@@ -1083,7 +1110,9 @@ module atm_core
       ! Finalize chemistry
       !
 #ifdef DO_CHEMISTRY
+#ifdef MPAS_USE_MUSICA
       call chemistry_finalize()
+#endif
 #endif
 
       call mpas_atm_diag_cleanup()

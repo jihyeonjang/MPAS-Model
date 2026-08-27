@@ -32,6 +32,9 @@ module atm_time_integration
    use mpas_atmphys_todynamics
    use mpas_atmphys_utilities
 #endif
+#ifdef DO_CHEMISTRY
+   use mpas_chemistry_todynamics, only: chemistry_get_tend
+#endif
 
    use mpas_atm_boundaries, only : nSpecZone, nRelaxZone, nBdyZone, mpas_atm_get_bdy_state, mpas_atm_get_bdy_tend  ! regional_MPAS addition
    
@@ -1920,6 +1923,9 @@ module atm_time_integration
       type (mpas_pool_type), pointer :: tend
       type (mpas_pool_type), pointer :: tend_physics
       type (mpas_pool_type), pointer :: lbc  ! regional_MPAS addition
+#ifdef DO_CHEMISTRY
+      type (mpas_pool_type), pointer :: tend_chemistry
+#endif
 
       real (kind=RKIND), dimension(:,:), pointer :: w
       real (kind=RKIND), dimension(:,:), pointer :: u, uReconstructZonal, uReconstructMeridional, uReconstructX, uReconstructY, uReconstructZ
@@ -1933,6 +1939,13 @@ module atm_time_integration
 #ifndef MPAS_CAM_DYCORE
       ! Used in allocating scratch fields for physics tendencies
       type (field2DReal), pointer :: tend_ru_physicsField, tend_rtheta_physicsField, tend_rho_physicsField
+#endif
+
+#ifdef DO_CHEMISTRY
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalars_pre
+      real (kind=RKIND), dimension(:,:),   pointer :: rqo3totten
+      integer, pointer :: index_qo3
+      logical, pointer :: config_o3prognostic
 #endif
 
       real (kind=RKIND)  :: time_dyn_step
@@ -1957,6 +1970,9 @@ module atm_time_integration
       call mpas_pool_get_config(block % configs, 'config_microp_scheme', config_microp_scheme)
       call mpas_pool_get_config(block % configs, 'config_convection_scheme', config_convection_scheme)
 #endif
+#ifdef DO_CHEMISTRY
+      call mpas_pool_get_config(block % configs, 'config_o3prognostic', config_o3prognostic)
+#endif
 
       !
       ! Retrieve field structures
@@ -1968,6 +1984,9 @@ module atm_time_integration
       call mpas_pool_get_subpool(block % structs, 'tend_physics', tend_physics)
 #ifdef DO_PHYSICS
       call mpas_pool_get_subpool(block % structs, 'diag_physics', diag_physics)
+#endif
+#ifdef DO_CHEMISTRY
+      call mpas_pool_get_subpool(block % structs, 'tend_chemistry', tend_chemistry)
 #endif
 
       !
@@ -2017,6 +2036,9 @@ module atm_time_integration
       call mpas_pool_get_dimension(state, 'num_scalars', num_scalars_ptr)
       num_scalars = num_scalars_ptr
 
+#ifdef DO_CHEMISTRY
+      call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
+#endif
       !
       ! allocate storage for physics tendency save
       !
@@ -2158,6 +2180,20 @@ module atm_time_integration
       tend_rtheta_physics(:,:) = 0.0_RKIND
       tend_rho_physics(:,:) = 0.0_RKIND
 #endif
+#endif
+
+#ifdef DO_CHEMISTRY
+      call mpas_timer_start('chemistry_get_tend')
+      call chemistry_get_tend(block % configs, mesh, state, tend, tend_chemistry)
+      call mpas_timer_stop('chemistry_get_tend')
+
+      if (config_o3prognostic) then
+         call mpas_pool_get_array(state, 'scalars', scalars_pre, 1)
+
+!         if (index_qo3 .gt. 0) then
+!            qo3_old(:,:) =  scalars_pre(index_qo3,:,:)
+!         end if
+      end if
 #endif
 
       !$acc enter data copyin(tend_rtheta_physics,tend_rho_physics,tend_ru_physics)
@@ -2794,7 +2830,22 @@ module atm_time_integration
          end do
 
       end if
+#endif
 
+#ifdef DO_CHEMISTRY
+      call mpas_pool_get_array(state, 'scalars', scalars_2, 2)
+      call mpas_pool_get_array(diag, 'rqo3totten', rqo3totten)
+
+      if (config_o3prognostic .and. index_qo3 .gt. 0) then
+         !qo3new(:,:) =  scalars_2(index_qo3,:,:)
+         !rqo3totten(:,:) = ( scalars_2(index_qo3,:,:) - qo3_old(:,:) ) / dt
+         rqo3totten(:,:) = ( scalars_2(index_qo3,:,:) - scalars_pre(index_qo3,:,:) ) / dt
+      else
+         rqo3totten(:,:) = 0._RKIND
+      end if
+#endif
+
+#ifdef DO_PHYSICS
       !simply set to zero negative mixing ratios of different water species (for now):
       where ( scalars_2(:,:,:) < 0.0)  &
          scalars_2(:,:,:) = 0.0

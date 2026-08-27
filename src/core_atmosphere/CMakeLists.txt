@@ -312,6 +312,18 @@ set(ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES
 
 list(TRANSFORM ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES PREPEND diagnostics/)
 
+# chemistry/
+set(ATMOSPHERE_CORE_CHEMISTRY_SOURCES
+    opp/o3_gfs.F
+    mpas_chemistry_driver.F
+    mpas_chemistry_init.F
+    mpas_chemistry_interface.F
+    mpas_chemistry_manager.F
+    mpas_chemistry_opp.F
+    mpas_chemistry_packages.F
+    mpas_chemistry_todynamics.F)
+list(TRANSFORM ATMOSPHERE_CORE_CHEMISTRY_SOURCES PREPEND chemistry/)
+
 # dynamics/
 set(ATMOSPHERE_CORE_DYNAMICS_SOURCES
     mpas_atm_boundaries.F
@@ -355,6 +367,7 @@ add_library(core_atmosphere ${ATMOSPHERE_CORE_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_MMM_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_WRF_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_NOAA_SOURCES}
+            ${ATMOSPHERE_CORE_CHEMISTRY_SOURCES}
             ${ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES}
             ${ATMOSPHERE_CORE_DYNAMICS_SOURCES})
 

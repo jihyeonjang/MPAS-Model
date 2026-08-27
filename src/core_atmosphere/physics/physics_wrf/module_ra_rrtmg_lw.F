@@ -11573,7 +11573,7 @@ CONTAINS
 !=================================================================================================================
  subroutine rrtmg_lwrad( &
                        p3d,p8w,pi3d,t3d,t8w,dz8w,qv3d,qc3d,qr3d,  &
-                       qi3d,qs3d,qg3d,cldfra3d,o33d,tsk,emiss,    &
+                       qi3d,qs3d,qg3d,cldfra3d,qo33d,tsk,emiss,   &
                        xland,xice,snow,xlat,julday,icloud,        &
                        cldovrlp,idcor,o3input,noznlevels,         &
                        pin,o3clim,glw,olr,lwcf,rthratenlw,        &
@@ -11607,7 +11607,7 @@ CONTAINS
 
  real,intent(in),dimension(ims:ime,kms:kme,jms:jme):: re_cloud,re_ice,re_snow
  real,intent(in),dimension(ims:ime,kms:kme,jms:jme),optional:: &
-    cldfra3d,qv3d,qc3d,qr3d,qi3d,qs3d,qg3d,o33d
+    cldfra3d,qv3d,qc3d,qr3d,qi3d,qs3d,qg3d,qo33d
 
 !--- additional input arguments to use the CAM ozone climatology:
  integer,intent(in):: noznlevels
@@ -11645,7 +11645,7 @@ CONTAINS
  real,dimension(1,nbndlw):: emis
 
  real,dimension(kts:kte):: &
-    tten1d,cldfra1d,dz1d,p1d,t1d,qv1d,qc1d,qr1d,qi1d,qs1d,qg1d,o31d
+    tten1d,cldfra1d,dz1d,p1d,t1d,qv1d,qc1d,qr1d,qi1d,qs1d,qg1d,qo31d
  real,dimension(kts:kte+1):: pw1d,tw1d
 
 !--- additional local variables and arrays needed to include additional layers between the model top
@@ -11789,14 +11789,14 @@ CONTAINS
           dz1d(k)     = dz8w(i,k,j)
           t1d(k)      = t3d(i,k,j)
           qv1d(k)     = amax1(qv3d(i,k,j),1.e-12)
-          o31d(k)     = 0.
+          qo31d(k)    = 0.
           qc1d(k)     = 0.
           qr1d(k)     = 0.
           qi1d(k)     = 0.
           qs1d(k)     = 0.
           qg1d(k)     = 0.
           cldfra1d(k) = 0.
-          if(present(o33d)) o31d(k) = o33d(i,k,j)
+          if(present(qo33d)) qo31d(k) = qo33d(i,k,j)
        enddo
 
        !--- initialize the local arrays containing the different cloud water and ice condenstates:
@@ -12009,9 +12009,13 @@ CONTAINS
           ccl4vmr(ncol,k)  = ccl4vmr(ncol,kte) 
        enddo
 
-       !--- initialize the ozone voume mixing ratio:
-       call inirad(o3mmr,plev,kts,nlayers-1)
-       if(o3input .eq. 2) then
+       !--- initialize the ozone volume mixing ratio:
+       if(o3input .eq. 0) then
+          call inirad(o3mmr,plev,kts,nlayers-1)
+          do k = kts,nlayers
+             o3vmr(ncol,k) = o3mmr(k)*amdo
+          enddo
+       elseif(o3input .eq. 2) then
           do k = 1, noznlevels
              o3clim1d(k) = o3clim(i,k,j)
           enddo
@@ -12019,13 +12023,14 @@ CONTAINS
           do k = kts,nlayers
              o3vmr(ncol,k) = o3mmr(k)
           enddo
-       else
-          do k = kts,nlayers
-             o3vmr(ncol,k) = o3mmr(k)*amdo
+       elseif(o3input .eq. 3) then
+          do k = kts,kte
+             o3vmr(ncol,k) = qo31d(k)*amdo
+          enddo
+          do k = kte+1,nlayers
+             o3vmr(ncol,k) = o3vmr(ncol,kte)
           enddo
        endif
-
-
 
        !--- CALCULATE CLOUD OPTICAL PROPERTIES:
        if(inflglw .gt. 0) then 

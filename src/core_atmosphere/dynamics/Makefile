@@ -20,8 +20,8 @@ clean:
 .F.o:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
-	$(CPP) $(CPPFLAGS) $(PHYSICS) $(CPPINCLUDES) -I../../framework $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../physics -I../physics/physics_wrf -I../physics/physics_mmm $(MPAS_ESMF_INC)
+	$(CPP) $(CPPFLAGS) $(PHYSICS) $(CHEMISTRY) $(CPPINCLUDES) -I../../framework $< > $*.f90
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../physics -I../physics/physics_wrf -I../physics/physics_mmm -I../chemistry $(MPAS_ESMF_INC)
 else
-	$(FC) $(CPPFLAGS) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../physics -I../physics/physics_wrf -I../physics/physics_mmm $(MPAS_ESMF_INC)
+	$(FC) $(CPPFLAGS) $(PHYSICS) $(CHEMISTRY) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I.. -I../../framework -I../../operators -I../physics -I../physics/physics_wrf -I../physics/physics_mmm -I../chemistry $(MPAS_ESMF_INC)
 endif
