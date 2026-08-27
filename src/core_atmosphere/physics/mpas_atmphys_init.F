@@ -137,6 +137,8 @@ use mpas_stream_manager
  real(kind=RKIND),dimension(:),pointer:: sst,sstsk,tmn,xice,xicem
  real(kind=RKIND),dimension(:,:),pointer:: tlag
 
+ real(kind=RKIND),dimension(:,:),pointer:: accrthratensw,accrthratenlw
+
  real(kind=RKIND),pointer:: config_oml_hml0
  real(kind=RKIND),dimension(:),pointer:: t_oml,t_oml_initial,t_oml_200m_initial
  real(kind=RKIND),dimension(:),pointer:: h_oml,h_oml_initial,hu_oml,hv_oml
@@ -196,6 +198,9 @@ use mpas_stream_manager
  call mpas_pool_get_array(diag_physics,'i_aclwupbc'  ,i_aclwupbc  )
  call mpas_pool_get_array(diag_physics,'i_aclwupt'   ,i_aclwupt   )
  call mpas_pool_get_array(diag_physics,'i_aclwuptc'  ,i_aclwuptc  )
+
+ call mpas_pool_get_array(diag_physics,'accrthratensw' ,accrthratensw )
+ call mpas_pool_get_array(diag_physics,'accrthratenlw' ,accrthratenlw )
 
  call mpas_pool_get_array(diag_physics,'acswdnb'     ,acswdnb     )
  call mpas_pool_get_array(diag_physics,'acswdnbc'    ,acswdnbc    )
@@ -322,6 +327,13 @@ use mpas_stream_manager
        aclwupbc(iCell) = 0._RKIND
        aclwupt(iCell)  = 0._RKIND
        aclwuptc(iCell) = 0._RKIND
+    enddo
+
+    do k = 1,nVertLevels
+    do iCell = 1, nCellsSolve
+       accrthratensw(k,iCell) = 0._RKIND
+       accrthratenlw(k,iCell) = 0._RKIND
+    enddo
     enddo
  endif
 

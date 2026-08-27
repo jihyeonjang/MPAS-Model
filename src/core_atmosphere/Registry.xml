@@ -827,6 +827,8 @@
 			<var name="aclwupbc"/>
 			<var name="aclwupt"/>
 			<var name="aclwuptc"/>
+			<var name="accrthratensw"/>
+			<var name="accrthratenlw"/>
 			<var name="glw"/>
 			<var name="o3clim"/>
 			<var name="o3vmr"/>
@@ -2570,6 +2572,12 @@
 
         <var_struct name="diag_physics" time_levs="1">
 
+                <!-- Accumulated Radiative Tendency -->
+                <var name="accrthratensw" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
+                     description="accumulated tendency of potential temperature due to short wave radiation"/>
+
+                <var name="accrthratenlw" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
+                     description="accumulated tendency of potential temperature due to long wave radiation"/>
 
                 <!-- ================================================================================================= -->
                 <!-- ... ARRAYS AND VARIABLES FOR UPDATING THE DEEP SOIL TEMPERATURE:                                  -->

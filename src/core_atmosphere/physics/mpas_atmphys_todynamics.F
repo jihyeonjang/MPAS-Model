@@ -95,7 +95,8 @@
  end subroutine pre_physics_get_tend
  
 !=================================================================================================================
- subroutine physics_get_tend(block,mesh,state,diag,tend,tend_physics,configs,rk_step,dynamics_substep, &
+ subroutine physics_get_tend(block,mesh,state,diag,tend,tend_physics,diag_physics,&
+                             configs,rk_step,dynamics_substep, &
                              tend_ru_physics,tend_rtheta_physics,tend_rho_physics,exchange_halo_group)
 !=================================================================================================================
 
@@ -112,6 +113,7 @@
  type(mpas_pool_type),intent(inout):: diag
  type(mpas_pool_type),intent(inout):: tend
  type(mpas_pool_type),intent(inout):: tend_physics
+ type(mpas_pool_type),intent(inout):: diag_physics
 
  real(kind=RKIND),intent(inout),dimension(:,:):: tend_ru_physics,tend_rtheta_physics,tend_rho_physics
 
@@ -138,7 +140,8 @@
  real(kind=RKIND),dimension(:,:),pointer:: rthcuten,rqvcuten,rqccuten, &
                                            rqrcuten,rqicuten,rqscuten, &
                                            rucuten,rvcuten
- real(kind=RKIND),dimension(:,:),pointer:: rthratenlw,rthratensw                                    
+ real(kind=RKIND),dimension(:,:),pointer:: rthratenlw,rthratensw,      &
+                                           accrthratenlw,accrthratensw
  
  real(kind=RKIND),dimension(:,:),pointer:: tend_u_phys !nick
  real(kind=RKIND),dimension(:,:,:),pointer:: tend_scalars
@@ -204,6 +207,8 @@
 
  call mpas_pool_get_array(tend,'scalars_tend',tend_scalars)
 
+ call mpas_pool_get_array(diag_physics,'accrthratenlw',accrthratenlw)
+ call mpas_pool_get_array(diag_physics,'accrthratensw',accrthratensw)
 
 !initialize the tendency for the potential temperature and all scalars due to PBL, convection,
 !and longwave and shortwave radiation:
@@ -248,7 +253,8 @@
               rublten,rvblten,rthblten,rqvblten,rqcblten,rqiblten,rqsblten,              &
               rncblten,rniblten,rnifablten,rnwfablten,                                   &
               rucuten,rvcuten,rthcuten,rqvcuten,rqccuten,rqrcuten,rqicuten,rqscuten,     &
-              rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
+              rthratenlw,rthratensw,accrthratenlw,accrthratensw,                         &
+              rublten_Edge,rucuten_Edge,                                                 &
               tend_th,tend_rtheta_physics,tend_scalars,tend_ru_physics,tend_u_phys,      &
               exchange_halo_group)
 
@@ -310,7 +316,8 @@
                     rublten,rvblten,rthblten,rqvblten,rqcblten,rqiblten,rqsblten,              &
                     rncblten,rniblten,rnifablten,rnwfablten,                                   &
                     rucuten,rvcuten,rthcuten,rqvcuten,rqccuten,rqrcuten,rqicuten,rqscuten,     &
-                    rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
+                    rthratenlw,rthratensw,accrthratenlw,accrthratensw,                         &
+                    rublten_Edge,rucuten_Edge,                                                 &
                     tend_th,tend_theta,tend_scalars,tend_u,tend_u_phys,                        &
                     exchange_halo_group)
 !=================================================================================================================
@@ -360,6 +367,8 @@
 
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rthratenlw
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rthratensw
+ real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: accrthratenlw
+ real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: accrthratensw
 
 !inout arguments:
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nEdges+1):: rublten_Edge
@@ -483,6 +492,25 @@
     enddo
     enddo
  endif
+
+
+!update accumulated radiation tendencies for theta
+!accumulate rthratensw and rthratenlw (K/s) every timestep
+
+ if (radt_lw_scheme .ne. 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+      accrthratenlw(k,i) = accrthratenlw(k,i) + rthratenlw(k,i)
+    end do
+    end do
+ end if
+ if (radt_sw_scheme .ne. 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+      accrthratensw(k,i) = accrthratensw(k,i) + rthratensw(k,i)
+    end do
+    end do
+ end if
 
 
 !convert the tendency for the potential temperature to tendency for the modified potential temperature:

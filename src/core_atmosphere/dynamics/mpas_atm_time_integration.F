@@ -2165,7 +2165,7 @@ module atm_time_integration
       call mpas_timer_start('physics_get_tend')
       rk_step = 1
       dynamics_substep = 1
-      call physics_get_tend( block, mesh, state, diag, tend, tend_physics, &
+      call physics_get_tend( block, mesh, state, diag, tend, tend_physics, diag_physics, &
                              block % configs, rk_step, dynamics_substep, &
                              tend_ru_physics, tend_rtheta_physics, tend_rho_physics, &
                              exchange_halo_group )
