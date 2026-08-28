@@ -44,7 +44,7 @@
 
 
 !--- prognostic ozone input data file:
- open(unit=o3unit,file='global_o3prdlos.f77',form='unformatted',convert='big_endian')
+ open(unit=o3unit,file='global_o3prdlos.f77',form='unformatted')
 
 
 !--- read in indices:
