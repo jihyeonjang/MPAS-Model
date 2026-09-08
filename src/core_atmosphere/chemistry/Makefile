@@ -4,7 +4,7 @@ ifeq ($(CORE),atmosphere)
 COREDEF = -Dmpas
 endif
 
-all: dummy core_chemistry_opp core_chemistry
+all: dummy core_chemistry
 
 dummy:
 	echo "****** compiling chemistry ******"
@@ -46,8 +46,6 @@ ifeq ($(MUSICA),true)
 core_mpas_musica:
 	echo "****** building with MUSICA ******"
 	(cd musica; $(MAKE) all)
-else
-	echo "****** building without MUSICA ******"
 endif
 
 # ----------------------------------------------------------------------
@@ -55,7 +53,7 @@ endif
 # ----------------------------------------------------------------------
 
 core_chemistry: core_chemistry_opp $(if $(filter true,$(MUSICA)),core_mpas_musica)
-	$(MAKE) chem_interface COREDEF="$(COREDEF)"
+	$(MAKE) chem_interface COREDEF="$(COREDEF)" PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)"
 	ar -ru libchem.a $(OBJS)
 
 ifeq ($(MUSICA),true)
@@ -91,9 +89,9 @@ clean:
 .F.o:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
-	$(CPP) $(CPPFLAGS) $(COREDEF) $(PHYSICS) $(CPPINCLUDES) $< > $*.f90
+	$(CPP) $(CPPFLAGS) $(COREDEF) $(PHYSICS) $(CHEMISTRY) $(CPPINCLUDES) $< > $*.f90
 	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I. -I./opp -I./musica -I.. -I../dynamics -I../physics -I../physics/physics_wrf -I../../framework $(MPAS_ESMF_INC)
 else
-	$(FC) $(CPPFLAGS) $(COREDEF) $(PHYSICS) $(FFLAGS) -c $*.F \
+	$(FC) $(CPPFLAGS) $(COREDEF) $(PHYSICS) $(CHEMISTRY) $(FFLAGS) -c $*.F \
 		$(CPPINCLUDES) $(FCINCLUDES) -I. -I./opp -I./musica -I.. -I../dynamics -I../physics -I../physics/physics_wrf -I../../framework $(MPAS_ESMF_INC)
 endif

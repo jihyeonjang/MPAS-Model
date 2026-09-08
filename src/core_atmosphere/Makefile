@@ -53,8 +53,8 @@ physcore: mpas_atm_dimensions.o
 	( cd ../..; ln -sf ./src/core_atmosphere/physics/physics_wrf/files/*DATA* .)
 	( cd ../..; ln -sf ./src/core_atmosphere/physics/physics_noahmp/parameters/*TBL .)
 
-chemcore: mpas_atm_dimensions.o
-	( cd chemistry; $(MAKE) all CHEMISTRY="$(CHEMISTRY)" )
+chemcore: mpas_atm_dimensions.o $(PHYSCORE)
+	( cd chemistry; $(MAKE) all PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)" )
 	( mkdir libchem; cd libchem; ar -x ../chemistry/libchem.a )
 
 dycore: mpas_atm_dimensions.o $(PHYSCORE) $(CHEMCORE)
