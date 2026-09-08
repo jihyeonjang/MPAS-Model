@@ -37,6 +37,15 @@
 
  </var_struct>
 
+ <var_struct name="lbc" time_levs="2" packages="limited_area">
+      <var_array name="lbc_scalars" type="real" dimensions="nVertLevels nCells Time">
+           <var name="lbc_qo3" name_in_code="qo3" array_group="passive"
+                units="kg kg^{-1} s^{-1}"
+                description="Lateral boundary tendency of ozone mixing ratio"
+                packages="chem2dopp_in"/>
+      </var_array>
+ </var_struct>
+
 
  <var_struct name="chem_input" time_levs="1">
 
