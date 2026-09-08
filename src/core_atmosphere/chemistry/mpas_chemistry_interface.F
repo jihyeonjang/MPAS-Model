@@ -58,8 +58,8 @@
  integer,pointer:: nOPPLevels,nOPPCoeffs
 
 !-----------------------------------------------------------------------------------------------------------------
-!call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine mpas_chemistry_dims:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine mpas_chemistry_dims:')
 
  call mpas_pool_get_dimension(mesh,'nOPPLevels' ,nOPPLevels  )
  call mpas_pool_get_dimension(mesh,'nOPPCoeffs' ,nOPPCoeffs  )
@@ -68,8 +68,8 @@
 
  this%its = 1 ; this%ite = nCellsSolve
  this%kts = 1 ; this%kte = nVertLevels ; this%ktep1 = nVertLevels+1
- call mpas_log_write('ITS = $i   ITE = $i',intArgs=(/this%its,this%ite/))
- call mpas_log_write('KTS = $i   KTE = $i',intArgs=(/this%kts,this%kte/))
+! call mpas_log_write('ITS = $i   ITE = $i',intArgs=(/this%its,this%ite/))
+! call mpas_log_write('KTS = $i   KTE = $i',intArgs=(/this%kts,this%kte/))
 
  this%im   = this%ite-this%its+1
  this%levs = this%kte-this%kts+1
@@ -77,7 +77,7 @@
  this%no3     = nOPPCoeffs
  this%no3levs = nOPPLevels
 
- call mpas_log_write('--- end subroutine mpas_chemistry_dims:')
+! call mpas_log_write('--- end subroutine mpas_chemistry_dims:')
 
  end subroutine mpas_chemistry_dims
 
@@ -93,8 +93,8 @@
  integer:: no3,no3levs
 
 !-----------------------------------------------------------------------------------------------------------------
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine mpas_chemistry_allocate:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine mpas_chemistry_allocate:')
 
  its     = this%its
  ite     = this%ite
@@ -122,7 +122,7 @@
  if(.not.associated(this%pres_c)   ) allocate(this%pres_c(its:ite,kts:kte)       )
  if(.not.associated(this%dpres_c)  ) allocate(this%dpres_c(its:ite,kts:kte)      )
 
- call mpas_log_write('--- end subroutine mpas_chemistry_allocate:')
+! call mpas_log_write('--- end subroutine mpas_chemistry_allocate:')
 
  end subroutine mpas_chemistry_allocate
 
@@ -134,8 +134,8 @@
  class(chems_vars),intent(inout):: this
 
 !-----------------------------------------------------------------------------------------------------------------
-!call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine mpas_chemistry_deallocate:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine mpas_chemistry_deallocate:')
 
 !--- deallocate ozone-related fields:
  if(associated(this%qoz)      ) deallocate(this%qoz      )
@@ -154,7 +154,7 @@
  if(associated(this%pres_c)  ) deallocate(this%pres_c    )
  if(associated(this%dpres_c) ) deallocate(this%dpres_c   )
 
- call mpas_log_write('--- end subroutine mpas_chemistry_deallocate:')
+! call mpas_log_write('--- end subroutine mpas_chemistry_deallocate:')
 
  end subroutine mpas_chemistry_deallocate
 
@@ -200,8 +200,8 @@
  real(kind=RKIND),dimension(:,:,:),pointer:: OPPcoeffs
 
 !-----------------------------------------------------------------------------------------------------------------
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine mpas_chemistry_from_MPAS:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine mpas_chemistry_from_MPAS:')
 
 
 !--- dimensions and arrays specific to CHEM2D-OPP:
@@ -321,7 +321,7 @@
  enddo
  if(allocated(pres2)) deallocate(pres2)
 
- call mpas_log_write('--- end subroutine mpas_chemistry_from_MPAS:')
+! call mpas_log_write('--- end subroutine mpas_chemistry_from_MPAS:')
 
  end subroutine mpas_chemistry_from_MPAS
 
@@ -350,8 +350,8 @@
  real(kind=RKIND),dimension(:,:),pointer:: rqo3oppten
 
 !-----------------------------------------------------------------------------------------------------------------
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine mpas_chemistry_to_MPAS:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine mpas_chemistry_to_MPAS:')
 
  call mpas_pool_get_array(diag_chemistry,'oppdiag1',oppdiag1)
  call mpas_pool_get_array(diag_chemistry,'oppdiag2',oppdiag2)
@@ -395,7 +395,7 @@
     enddo
  enddo
 
- call mpas_log_write('--- end subroutine mpas_chemistry_to_MPAS:')
+! call mpas_log_write('--- end subroutine mpas_chemistry_to_MPAS:')
 
  end subroutine mpas_chemistry_to_MPAS
 

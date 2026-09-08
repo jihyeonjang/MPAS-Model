@@ -66,10 +66,8 @@
  call mpas_pool_get_config(domain%configs,'config_o3prognostic',o3prognostic)
  if(.not. o3prognostic) return
 
-
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine chemistry_timetracker:')
-
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine chemistry_timetracker:')
 
 !--- update the current julian day and current year:
  currTime = mpas_get_clock_time(clock,MPAS_NOW,ierr)
@@ -108,7 +106,7 @@
  end do
 
 
- call mpas_log_write('--- end subroutine chemistry_timetracker:')
+! call mpas_log_write('--- end subroutine chemistry_timetracker:')
 
  end subroutine chemistry_timetracker
 

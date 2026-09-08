@@ -49,8 +49,8 @@
  real(kind=RKIND),dimension(:,:,:,:),pointer:: O3data
 
 !-----------------------------------------------------------------------------------------------------------------
-!call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine init_opp:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine init_opp:')
 
  call mpas_pool_get_config(configs,'config_o3climatology',o3climatology)
  call mpas_pool_get_config(configs,'config_o3prognostic' ,o3prognostic )
@@ -138,7 +138,7 @@
 !   call mpas_log_write(' ')
 !enddo
 
- call mpas_log_write('--- end subroutine init_opp:')
+! call mpas_log_write('--- end subroutine init_opp:')
 
  end subroutine init_opp
 
@@ -175,8 +175,8 @@
  real(kind=RKIND):: fact1,fact2
 
 !-----------------------------------------------------------------------------------------------------------------
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine opp_from_MPAS:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine opp_from_MPAS:')
 
  call mpas_pool_get_dimension(mesh,'nCellsSolve',nCellsSolve)
  call mpas_pool_get_dimension(mesh,'nMonths'    ,nMonths    )
@@ -226,7 +226,7 @@
  fact1 = real(fact1_r8, RKIND)
  fact2 = real(fact2_r8, RKIND)
 
- call mpas_log_write('--- end subroutine getfactors:')
+ call mpas_log_write('--- getfactors for ozone coefficients in opp_from_MPAS:')
  call mpas_log_write('nm    = $i',intArgs =(/nm/))
  call mpas_log_write('np    = $i',intArgs =(/np/))
  call mpas_log_write('fact1 = $r',realArgs=(/fact1/))
@@ -241,8 +241,7 @@
     enddo
  enddo
 
-
- call mpas_log_write('--- end subroutine opp_from_MPAS:')
+! call mpas_log_write('--- end subroutine opp_from_MPAS:')
 
  end subroutine opp_from_MPAS
 

@@ -34,7 +34,7 @@
  real(kind=kind_phys),dimension(:),allocatable:: coeff_min,coeff_max
 
 !-----------------------------------------------------------------------------------------------------------------
-!call mpas_log_write(' ')
+ call mpas_log_write(' ')
  call mpas_log_write('--- enter subroutine read_o3data:')
 
 !--- define unit:
@@ -206,8 +206,8 @@ enddo
  real(kind=kind_phys),dimension(im,pl_coeff):: prod
 
 !-----------------------------------------------------------------------------------------------------------------
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine o3_gfs_run:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine o3_gfs_run:')
 
  gravi = 1./grav
 
@@ -306,7 +306,7 @@ enddo
 
  enddo
 
- call mpas_log_write('--- end subroutine o3_gfs_run:')
+! call mpas_log_write('--- end subroutine o3_gfs_run:')
 
  end subroutine o3_gfs_run
 

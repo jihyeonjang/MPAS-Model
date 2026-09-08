@@ -70,8 +70,8 @@
 
  if(.not. o3prognostic) return
 
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine mpas_chemistry_driver:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine mpas_chemistry_driver:')
 
  time_lev = 1
 
@@ -155,8 +155,7 @@
  call mpas_timer_stop('chemistry driver')
 
 
- call mpas_log_write('--- end subroutine mpas_chemistry_driver:')
- call mpas_log_write(' ')
+! call mpas_log_write('--- end subroutine mpas_chemistry_driver:')
 
  end subroutine chemistry_driver
 

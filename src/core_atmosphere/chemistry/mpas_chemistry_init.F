@@ -56,8 +56,8 @@
 
  call mpas_pool_get_config(configs,'config_OPP_update',OPP_update)
 
- call mpas_log_write(' ')
- call mpas_log_write('--- enter subroutine chemistry_init:')
+! call mpas_log_write(' ')
+! call mpas_log_write('--- enter subroutine chemistry_init:')
 
  if (o3prognostic) then
     !--- get startTime prior to initializating alarms:
@@ -77,8 +77,7 @@
     call init_opp(configs,mesh,chem_input)
  end if
 
- call mpas_log_write('--- end subroutine chemistry_init:')
- call mpas_log_write(' ')
+! call mpas_log_write('--- end subroutine chemistry_init:')
 
  end subroutine chemistry_init
 
