@@ -2715,6 +2715,7 @@ module init_atm_cases
 
       integer :: nfglevels_actual
       integer, pointer :: index_qv
+      integer, pointer :: index_qo3
 
       integer, dimension(5) :: interp_list
       real (kind=RKIND) :: maskval
@@ -2775,6 +2776,9 @@ module init_atm_cases
       !  calculation of the water vapor mixing ratio:
       real (kind=RKIND) :: sh_max,sh_min,global_sh_max,global_sh_min
 
+      !  calculation of the ozone mixing ratio to check if it is found in met data:
+      real (kind=RKIND) :: o3_max,o3_min,global_o3_max,global_o3_min
+
       character (len=StrKIND), pointer :: config_met_prefix
       character (len=StrKIND), pointer :: config_start_time
       logical, pointer :: config_met_interp
@@ -2788,6 +2792,7 @@ module init_atm_cases
       logical, pointer :: config_tc_vertical_grid
       character (len=StrKIND), pointer :: config_specified_zeta_levels
       logical, pointer :: config_use_spechumd
+      logical, pointer :: config_use_ozone
       integer, pointer :: config_nfglevels
       integer, pointer :: config_nfgsoillevels
       logical, pointer :: config_smooth_surfaces
@@ -2816,6 +2821,7 @@ module init_atm_cases
       real (kind=RKIND), dimension(:,:), pointer :: rho
       real (kind=RKIND), dimension(:,:), pointer :: relhum
       real (kind=RKIND), dimension(:,:), pointer :: spechum
+      real (kind=RKIND), dimension(:,:), pointer :: o3mr
       real (kind=RKIND), dimension(:,:), pointer :: ru
       real (kind=RKIND), dimension(:,:), pointer :: rw
       real (kind=RKIND), dimension(:), pointer :: precipw
@@ -2835,6 +2841,7 @@ module init_atm_cases
       real (kind=RKIND), dimension(:,:), pointer :: t_fg
       real (kind=RKIND), dimension(:,:), pointer :: rh_fg
       real (kind=RKIND), dimension(:,:), pointer :: sh_fg
+      real (kind=RKIND), dimension(:,:), pointer :: o3_fg
       real (kind=RKIND), dimension(:,:), pointer :: gfs_z
       real (kind=RKIND), dimension(:,:), pointer :: p_fg
       real (kind=RKIND), dimension(:,:), pointer :: st_fg
@@ -2866,6 +2873,7 @@ module init_atm_cases
       call mpas_pool_get_config(configs, 'config_tc_vertical_grid', config_tc_vertical_grid)
       call mpas_pool_get_config(configs, 'config_specified_zeta_levels', config_specified_zeta_levels)
       call mpas_pool_get_config(configs, 'config_use_spechumd', config_use_spechumd)
+      call mpas_pool_get_config(configs, 'config_use_ozone', config_use_ozone)
       call mpas_pool_get_config(configs, 'config_nfglevels', config_nfglevels)
       call mpas_pool_get_config(configs, 'config_nfgsoillevels', config_nfgsoillevels)
       call mpas_pool_get_config(configs, 'config_smooth_surfaces', config_smooth_surfaces)
@@ -2930,6 +2938,7 @@ module init_atm_cases
       call mpas_pool_get_array(diag, 'surface_pressure', surface_pressure)
       call mpas_pool_get_array(diag, 'relhum', relhum)
       call mpas_pool_get_array(diag, 'spechum', spechum)
+      call mpas_pool_get_array(diag, 'o3mr', o3mr)
       call mpas_pool_get_array(diag, 'ru', ru)
       call mpas_pool_get_array(diag, 'rw', rw)
 
@@ -2975,6 +2984,7 @@ module init_atm_cases
       call mpas_pool_get_array(fg, 't', t_fg)
       call mpas_pool_get_array(fg, 'rh', rh_fg)
       call mpas_pool_get_array(fg, 'sh', sh_fg)
+      call mpas_pool_get_array(fg, 'o3', o3_fg)
       call mpas_pool_get_array(fg, 'gfs_z', gfs_z)
       call mpas_pool_get_array(fg, 'p', p_fg)
 
@@ -2983,6 +2993,10 @@ module init_atm_cases
       nz = nz1 + 1
 
       call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+
+      if (config_use_ozone) then
+         call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
+      end if
 
       xnutr = 0.
       zd = 12000.
@@ -3541,6 +3555,7 @@ module init_atm_cases
              trim(field % field) == 'TT' .or. &
              trim(field % field) == 'RH' .or. &
              trim(field % field) == 'SPECHUMD' .or. &
+             trim(field % field) == 'O3MR' .or. &
              trim(field % field) == 'GHT' .or. &
              trim(field % field) == 'PMSL' .or. &
              trim(field % field) == 'PSFC' .or. &
@@ -3751,6 +3766,13 @@ module init_atm_cases
                latPoints => latCell
                lonPoints => lonCell
                call mpas_pool_get_array(fg, 'sh', destField2d)
+               ndims = 2
+            else if (trim(field % field) == 'O3MR') then
+               call mpas_log_write('Interpolating O3MR at $i $r', intArgs=(/k/), realArgs=(/vert_level(k)/))
+               nInterpPoints = nCells
+               latPoints => latCell
+               lonPoints => lonCell
+               call mpas_pool_get_array(fg, 'o3', destField2d)
                ndims = 2
             else if (trim(field % field) == 'GHT') then
                call mpas_log_write('Interpolating GHT at $i $r', intArgs=(/k/), realArgs=(/vert_level(k)/))
@@ -5078,6 +5100,23 @@ call mpas_log_write('Done with soil consistency check')
          end do
 
 
+         ! O3MR: if first-guess values are negative, set those values to zero before
+         ! vertical interpolation.
+         sorted_arr(:,:) = -999.0
+         o3mr(:,iCell) = 0._RKIND
+         do k = 1, nfglevels_actual
+            sorted_arr(1,k) = z_fg(k,iCell)
+            if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
+            sorted_arr(2,k) = max(0._RKIND,o3_fg(k,iCell))
+         end do
+         call mpas_quicksort(nfglevels_actual, sorted_arr)
+         do k = nVertLevels, 1, -1
+            target_z = 0.5 * (zgrid(k,iCell) + zgrid(k+1,iCell))
+            o3mr(k,iCell) = vertical_interp(target_z, nfglevels_actual-1, &
+                                        sorted_arr(:,1:nfglevels_actual-1), order=1, extrap=0)
+         end do
+
+
          ! GHT
          sorted_arr(:,:) = -999.0
          do k = 1, nfglevels_actual
@@ -5221,6 +5260,39 @@ call mpas_log_write('Done with soil consistency check')
             enddo
          enddo
       endif
+
+      ! check for ozone mixing ratio
+      if(config_use_ozone) then
+         global_o3_min = 0._RKIND
+         global_o3_max = 0._RKIND
+         o3_min = minval(o3mr(:,1:nCellsSolve))
+         o3_max = maxval(o3mr(:,1:nCellsSolve))
+         call mpas_dmpar_min_real(dminfo,o3_min,global_o3_min)
+         call mpas_dmpar_max_real(dminfo,o3_max,global_o3_max)
+
+         call mpas_log_write('--- config_use_ozone = $l, index_qo3 = $i', logicArgs=(/config_use_ozone/), intArgs=(/index_qo3/))
+         call mpas_log_write('--- global_o3_min = $r', realArgs=(/global_o3_min/))
+         call mpas_log_write('--- global_o3_max = $r', realArgs=(/global_o3_max/))
+
+         if (global_o3_min==0._RKIND .and. global_o3_max==0._RKIND) then
+            call mpas_log_write('********************************************************************************', &
+                                messageType=MPAS_LOG_WARN)
+            call mpas_log_write('config_use_ozone = $l, but ozone mixing ratio (O3MR) was not found', &
+                                logicArgs=(/config_use_ozone/), messageType=MPAS_LOG_WARN)
+            call mpas_log_write('in '//trim(config_met_prefix)//':'//config_start_time(1:13),  &
+                                messageType=MPAS_LOG_WARN)
+            call mpas_log_write('********************************************************************************', &
+                                messageType=MPAS_LOG_CRIT)
+         end if
+
+         call mpas_log_write(' *** initializing ozone mixing ratio')
+         call mpas_log_write('')
+         do k=1,nVertLevels
+            do iCell=1,nCells
+               scalars(index_qo3,k,iCell) = o3mr(k,iCell)
+            end do
+         end do
+      end if
 
       !
       ! After RH has been used to compute qv (unless config_use_spechumd = T and a valid spechum field
@@ -5477,6 +5549,7 @@ call mpas_log_write('Done with soil consistency check')
 
       integer :: nfglevels_actual
       integer, pointer :: index_qv
+      integer, pointer :: index_qo3
 
       integer, dimension(5) :: interp_list
       real (kind=RKIND) :: msgval
@@ -5506,8 +5579,12 @@ call mpas_log_write('Done with soil consistency check')
       !  calculation of the water vapor mixing ratio:
       real (kind=RKIND) :: sh_max,sh_min,global_sh_max,global_sh_min
 
+      !  calculation of the ozone mixing ratio to check if it is found in met data:
+      real (kind=RKIND) :: o3_max,o3_min,global_o3_max,global_o3_min
+
       character (len=StrKIND), pointer :: config_met_prefix
       logical, pointer :: config_use_spechumd
+      logical, pointer :: config_use_ozone
       integer, pointer :: config_nfglevels
       integer, pointer :: config_theta_adv_order
       real (kind=RKIND), pointer :: config_coef_3rd_order
@@ -5525,6 +5602,7 @@ call mpas_log_write('Done with soil consistency check')
       real (kind=RKIND), dimension(:,:), pointer :: rho
       real (kind=RKIND), dimension(:,:), pointer :: relhum
       real (kind=RKIND), dimension(:,:), pointer :: spechum
+      real (kind=RKIND), dimension(:,:), pointer :: o3mr
       real (kind=RKIND), dimension(:,:), pointer :: ru
       real (kind=RKIND), dimension(:,:), pointer :: rw
 
@@ -5534,6 +5612,7 @@ call mpas_log_write('Done with soil consistency check')
       real (kind=RKIND), dimension(:,:), pointer :: t_fg
       real (kind=RKIND), dimension(:,:), pointer :: rh_fg
       real (kind=RKIND), dimension(:,:), pointer :: sh_fg
+      real (kind=RKIND), dimension(:,:), pointer :: o3_fg
       real (kind=RKIND), dimension(:,:), pointer :: p_fg
       real (kind=RKIND), dimension(:), pointer :: soilz
 
@@ -5550,6 +5629,7 @@ call mpas_log_write('Done with soil consistency check')
 
       call mpas_pool_get_config(configs, 'config_met_prefix', config_met_prefix)
       call mpas_pool_get_config(configs, 'config_use_spechumd', config_use_spechumd)
+      call mpas_pool_get_config(configs, 'config_use_ozone', config_use_ozone)
       call mpas_pool_get_config(configs, 'config_nfglevels', config_nfglevels)
       call mpas_pool_get_config(configs, 'config_theta_adv_order', config_theta_adv_order)
       call mpas_pool_get_config(configs, 'config_coef_3rd_order', config_coef_3rd_order)
@@ -5594,6 +5674,7 @@ call mpas_log_write('Done with soil consistency check')
       call mpas_pool_get_array(diag, 'pressure', pressure)
       call mpas_pool_get_array(diag, 'relhum', relhum)
       call mpas_pool_get_array(diag, 'spechum', spechum)
+      call mpas_pool_get_array(diag, 'o3mr', o3mr)
       call mpas_pool_get_array(diag, 'ru', ru)
       call mpas_pool_get_array(diag, 'rw', rw)
 
@@ -5618,12 +5699,17 @@ call mpas_log_write('Done with soil consistency check')
       call mpas_pool_get_array(fg, 't', t_fg)
       call mpas_pool_get_array(fg, 'rh', rh_fg)
       call mpas_pool_get_array(fg, 'sh', sh_fg)
+      call mpas_pool_get_array(fg, 'o3', o3_fg)
       call mpas_pool_get_array(fg, 'p', p_fg)
 
       call mpas_pool_get_dimension(dims, 'nCellsSolve', nCellsSolve)
       nVertLevelsP1 = nVertLevels + 1
 
-      call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+      call mpas_pool_get_dimension(lbc_state, 'index_lbc_qv', index_qv)
+
+      if (config_use_ozone) then
+         call mpas_pool_get_dimension(lbc_state, 'index_lbc_qo3', index_qo3)
+      end if
 
       etavs = (1.0_RKIND - 0.252_RKIND) * pii / 2.0_RKIND
       rcv = rgas / (cp - rgas)
@@ -5687,6 +5773,7 @@ call mpas_log_write('Done with soil consistency check')
              trim(field % field) == 'TT' .or. &
              trim(field % field) == 'RH' .or. &
              trim(field % field) == 'SPECHUMD' .or. &
+             trim(field % field) == 'O3MR' .or. &
              trim(field % field) == 'GHT' .or. &
              trim(field % field) == 'SOILHGT' .or. &
              trim(field % field) == 'PRES' .or. &
@@ -5783,6 +5870,13 @@ call mpas_log_write('Done with soil consistency check')
                latPoints => latCell
                lonPoints => lonCell
                call mpas_pool_get_array(fg, 'sh', destField2d)
+               ndims = 2
+            else if (trim(field % field) == 'O3MR') then
+               call mpas_log_write('Interpolating O3MR at $i $r', intArgs=(/k/), realArgs=(/vert_level(k)/))
+               nInterpPoints = nCells
+               latPoints => latCell
+               lonPoints => lonCell
+               call mpas_pool_get_array(fg, 'o3', destField2d)
                ndims = 2
             else if (trim(field % field) == 'GHT') then
                call mpas_log_write('Interpolating GHT at $i $r', intArgs=(/k/), realArgs=(/vert_level(k)/))
@@ -5977,6 +6071,23 @@ call mpas_log_write('Done with soil consistency check')
          end do
 
 
+         ! O3MR: if first-guess values are negative, set those values to zero before
+         ! vertical interpolation.
+         sorted_arr(:,:) = -999.0
+         o3mr(:,iCell) = 0._RKIND
+         do k = 1, nfglevels_actual
+            sorted_arr(1,k) = z_fg(k,iCell)
+            if (vert_level(k) == 200100.0) sorted_arr(1,k) = 99999.0
+            sorted_arr(2,k) = max(0._RKIND,o3_fg(k,iCell))
+         end do
+         call mpas_quicksort(nfglevels_actual, sorted_arr)
+         do k = nVertLevels, 1, -1
+            target_z = 0.5 * (zgrid(k,iCell) + zgrid(k+1,iCell))
+            o3mr(k,iCell) = vertical_interp(target_z, nfglevels_actual-1, &
+                                        sorted_arr(:,1:nfglevels_actual-1), order=1, extrap=0)
+         end do
+
+
          ! PRESSURE
          sorted_arr(:,:) = -999.0
          do k = 1, nfglevels_actual
@@ -6063,6 +6174,40 @@ call mpas_log_write('Done with soil consistency check')
             enddo
          enddo
       endif
+
+      ! check for ozone mixing ratio
+      if(config_use_ozone) then
+         global_o3_min = 0._RKIND
+         global_o3_max = 0._RKIND
+         o3_min = minval(o3mr(:,1:nCellsSolve))
+         o3_max = maxval(o3mr(:,1:nCellsSolve))
+         call mpas_dmpar_min_real(dminfo,o3_min,global_o3_min)
+         call mpas_dmpar_max_real(dminfo,o3_max,global_o3_max)
+
+         call mpas_log_write('')
+         call mpas_log_write('--- config_use_ozone = $l, index_qo3 = $i', logicArgs=(/config_use_ozone/), intArgs=(/index_qo3/))
+         call mpas_log_write('--- global_o3_min = $r', realArgs=(/global_o3_min/))
+         call mpas_log_write('--- global_o3_max = $r', realArgs=(/global_o3_max/))
+         call mpas_log_write('')
+
+         if (global_o3_min==0._RKIND .and. global_o3_max==0._RKIND) then
+            call mpas_log_write('********************************************************************************', &
+                                messageType=MPAS_LOG_WARN)
+            call mpas_log_write('config_use_ozone = $l, but ozone mixing ratio (O3MR) was not found in', &
+                                logicArgs=(/config_use_ozone/), messageType=MPAS_LOG_WARN)
+            call mpas_log_write(''//trim(config_met_prefix)//':'//timestamp(1:13), messageType=MPAS_LOG_WARN)
+            call mpas_log_write('********************************************************************************', &
+                                messageType=MPAS_LOG_CRIT)
+         end if
+
+         call mpas_log_write(' *** initializing ozone mixing ratio')
+         call mpas_log_write('')
+         do k=1,nVertLevels
+            do iCell=1,nCells
+               scalars(index_qo3,k,iCell) = o3mr(k,iCell)
+            end do
+         end do
+      end if
 
       !
       ! Diagnose fields needed in initial conditions file (u, w, rho, theta)

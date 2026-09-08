@@ -127,6 +127,7 @@ module init_atm_core_interface
       logical, pointer :: microphysics_aerosols
       integer, pointer :: config_init_case
       logical, pointer :: noahmp, config_noahmp_static
+      logical, pointer :: config_use_ozone, met_ozone
 
 
       ierr = init_atm_setup_packages_when(configs, packages)
@@ -140,6 +141,7 @@ module init_atm_core_interface
       call mpas_pool_get_config(configs, 'config_native_gwd_gsl_static', config_native_gwd_gsl_static)
       call mpas_pool_get_config(configs, 'config_vertical_grid', config_vertical_grid)
       call mpas_pool_get_config(configs, 'config_met_interp', config_met_interp)
+      call mpas_pool_get_config(configs, 'config_use_ozone', config_use_ozone)
 
       nullify(initial_conds)
       call mpas_pool_get_package(packages, 'initial_condsActive', initial_conds)
@@ -174,6 +176,9 @@ module init_atm_core_interface
       nullify(microphysics_aerosols)
       call mpas_pool_get_package(packages, 'microphysics_aerosolsActive', microphysics_aerosols)
 
+      nullify(met_ozone)
+      call mpas_pool_get_package(packages, 'met_ozoneActive', met_ozone)
+
       if (.not. associated(initial_conds) .or. &
           .not. associated(sfc_update) .or. &
           .not. associated(gwd_stage_in) .or. &
@@ -183,7 +188,8 @@ module init_atm_core_interface
           .not. associated(vertical_stage_out) .or. &
           .not. associated(met_stage_in) .or. &
           .not. associated(met_stage_out) .or. &
-          .not. associated(microphysics_aerosols)) then
+          .not. associated(microphysics_aerosols) .or. &
+          .not. associated(met_ozone)) then
          call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_ERR)
          call mpas_log_write('* Error while setting up packages for init_atmosphere core.',                      messageType=MPAS_LOG_ERR)
          call mpas_log_write('********************************************************************************', messageType=MPAS_LOG_ERR)
@@ -204,9 +210,12 @@ module init_atm_core_interface
          microphysics_aerosols = .false.
          inquire(file="QNWFA_QNIFA_SIGMA_MONTHLY.dat",exist=lexist)
          if(lexist) microphysics_aerosols = .true.
+         met_ozone = .false.
+         if(config_use_ozone) met_ozone = .true.
       else
          lbcs = .false.
          microphysics_aerosols = .false.
+         met_ozone = .false.
       end if
 
       if (config_init_case == 7) then
@@ -234,6 +243,9 @@ module init_atm_core_interface
          inquire(file="QNWFA_QNIFA_SIGMA_MONTHLY.dat",exist=lexist)
          if((lexist .and. met_stage_out) .or. (lexist .and. met_stage_in)) microphysics_aerosols = .true.
 
+         met_ozone = .false.
+         if((config_use_ozone .and. met_stage_out) .or. (config_use_ozone .and. met_stage_in)) met_ozone = .true.
+
       else if (config_init_case == 8) then
          gwd_stage_in = .false.
          gwd_stage_out = .false.
@@ -259,6 +271,9 @@ module init_atm_core_interface
          microphysics_aerosols = .false.
          inquire(file="QNWFA_QNIFA_SIGMA_MONTHLY.dat",exist=lexist)
          if((lexist .and. met_stage_out) .or. (lexist .and. met_stage_in)) microphysics_aerosols = .true.
+
+         met_ozone = .false.
+         if((config_use_ozone .and. met_stage_out) .or. (config_use_ozone .and. met_stage_in)) met_ozone = .true.
 
          initial_conds = .false.   ! Also, turn off the initial_conds package to avoid writing the IC "output" stream
 
