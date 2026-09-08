@@ -367,8 +367,6 @@
 
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rthratenlw
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rthratensw
- real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: accrthratenlw
- real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: accrthratensw
 
 !inout arguments:
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nEdges+1):: rublten_Edge
@@ -378,6 +376,9 @@
 
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: tend_th
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: tend_theta
+
+ real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: accrthratenlw
+ real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: accrthratensw
 
  real(kind=RKIND),intent(inout),dimension(num_scalars,nVertLevels,nCells+1):: tend_scalars
 
