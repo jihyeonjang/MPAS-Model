@@ -8,11 +8,15 @@
 
 
  <dims>
+      <!-- These two dimensions must match the dimensions of the ozone forcing data file that is read by
+           ty_ozphys%load_o3prog: nOPPLevels is its number of vertical levels, and nOPPCoeffs its number
+           of coefficients (6 for oz_phys_2015, 4 for oz_phys_2006). init_ozphys stops the model with an
+           explicit message if they do not match. -->
       <dim name="nOPPLevels" definition="53"
-           description="The number of levels in the linearized CHEM2D-OPP (McCormack et al.,2006)"/>
+           description="The number of levels in the ozone forcing data (McCormack et al.,2006)"/>
 
       <dim name="nOPPCoeffs" definition="6"
-           description="The number of coefficients in the linearized CHEM2D-OPP (McCormack et al.,2006)"/>
+           description="The number of coefficients in the ozone forcing data (McCormack et al.,2006)"/>
  </dims>
 
 
@@ -49,18 +53,30 @@
 
  <var_struct name="chem_input" time_levs="1">
 
-      <!-- Monthly mean pressure and coefficients needed in the linearized CHEM2D-OPP: -->
-      <var name="OPPpres" type="real" dimensions="nOPPLevels" units="Pa"
-           description="fixed pressure levels in the linearized CHEM2D-OPP (McCormack et al.,2006)"
+      <!-- Pressure levels of the ozone forcing data. The monthly-mean coefficients themselves are held
+           in the ty_ozphys object of the CCPP ozone photochemistry parameterization, and are not stored
+           on the MPAS mesh (see chemistry/mpas_chemistry_ozphys.F): -->
+      <var name="OPPpres" type="real" dimensions="nOPPLevels" units="ln(Pa)"
+           description="natural log of the pressure levels of the ozone forcing data (McCormack et al.,2006)"
            packages="chem2dopp_in"/>
 
-      <var name="OPPdata" type="real" dimensions="nMonths nOPPCoeffs nOPPLevels nCells" units="various"
-           description="monthly-mean coefficients used in the linearized CHEM2D-OPP (McCormack et al.,2006)"
+      <!-- Indices and weight used to interpolate the ozone forcing data, given on a uniform gaussian grid,
+           to the MPAS mesh. These are computed once, at initialization, by ty_ozphys%setup_o3prog: -->
+      <var name="OPPjindx1" type="integer" dimensions="nCells" units="-"
+           description="index of the ozone forcing data latitude south of each MPAS cell"
            packages="chem2dopp_in"/>
 
-      <!-- Coefficients needed in the linearized CHEM2D-OPP interpolated to the actual timestamp: -->
+      <var name="OPPjindx2" type="integer" dimensions="nCells" units="-"
+           description="index of the ozone forcing data latitude north of each MPAS cell"
+           packages="chem2dopp_in"/>
+
+      <var name="OPPddy" type="real" dimensions="nCells" units="-"
+           description="latitudinal interpolation weight between OPPjindx1 and OPPjindx2"
+           packages="chem2dopp_in"/>
+
+      <!-- Ozone forcing coefficients interpolated to the actual timestamp by ty_ozphys%update_o3prog: -->
       <var name="OPPcoeffs" type="real" dimensions="nOPPCoeffs nOPPLevels nCells Time" units="various"
-           description="coefficients used in the linearized CHEM2D-OPP at the actual timestamp"
+           description="coefficients used in the ozone photochemistry parameterization at the actual timestamp"
            packages="chem2dopp_in"/>
 
  </var_struct>
@@ -68,20 +84,20 @@
 
  <var_struct name="diag_chemistry" time_levs="1">
 
-      <var name="oppdiag1" type="real" dimensions="nVertLevels nCells Time" units=" "
-           description="diagnostic 1 from the linearized CHEM2D-OPP"
+      <var name="oppdiag1" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+           description="change in ozone mixing ratio over one time step due to production and loss"
            packages="chem2dopp_in"/>
 
-      <var name="oppdiag2" type="real" dimensions="nVertLevels nCells Time" units=" "
-           description="diagnostic 2 from the linearized CHEM2D-OPP"
+      <var name="oppdiag2" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+           description="change in ozone mixing ratio over one time step due to ozone mixing ratio"
            packages="chem2dopp_in"/>
 
-      <var name="oppdiag3" type="real" dimensions="nVertLevels nCells Time" units=" "
-           description="diagnostic 3 from the linearized CHEM2D-OPP"
+      <var name="oppdiag3" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+           description="change in ozone mixing ratio over one time step due to temperature"
            packages="chem2dopp_in"/>
 
-      <var name="oppdiag4" type="real" dimensions="nVertLevels nCells Time" units=" "
-           description="diagnostic 4 from the linearized CHEM2D-OPP"
+      <var name="oppdiag4" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+           description="change in ozone mixing ratio over one time step due to overhead ozone column"
            packages="chem2dopp_in"/>
 
  </var_struct>
@@ -90,7 +106,7 @@
  <var_struct name="tend_chemistry" time_levs="1">
 
       <var name="rqo3oppten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
-           description="ozone tendency from the linearized CHEM2D-OPP"
+           description="ozone tendency from the ozone photochemistry parameterization"
            packages="chem2dopp_in"/>
 
  </var_struct>

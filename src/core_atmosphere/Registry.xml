@@ -923,7 +923,9 @@
 			<var name="hu_oml"/>
 			<var name="hv_oml"/>
 			<var name="OPPpres"/>
-			<var name="OPPdata"/>
+			<var name="OPPjindx1"/>
+			<var name="OPPjindx2"/>
+			<var name="OPPddy"/>
 			<var name="OPPcoeffs"/>
 			<var_struct name="diag_physics_noahmp"/>
 #endif
@@ -2301,6 +2303,16 @@
                      description="logical for configuration of ozone as a prognostic variable"
                      possible_values=".true. for using prognostic ozone scheme; .false. for using climatological ozone"/>
 
+                <nml_option name="config_o3prognostic_scheme" type="character" default_value="oz_phys_2015" in_defaults="false"
+                     units="-"
+                     description="choice of the CCPP ozone photochemistry parameterization used when config_o3prognostic = true"
+                     possible_values="`oz_phys_2015' for the six-coefficient NRL parameterization; `oz_phys_2006' for the McCormack et al. (2006) parameterization"/>
+
+                <nml_option name="config_o3prdlos_file" type="character" default_value="global_o3prdlos.f77" in_defaults="false"
+                     units="-"
+                     description="name of the file with the monthly-mean ozone production and loss coefficients read by the CCPP ozone photochemistry parameterization"
+                     possible_values="any valid file name"/>
+
                 <nml_option name="config_microp_re" type="logical" default_value="false" in_defaults="false"
                      units="-"
                      description="logical for calculation of the effective radii for cloud water, cloud ice, and snow"
@@ -2363,7 +2375,7 @@
 
                 <nml_option name="config_OPP_update" type="character" default_value="24:00:00" in_defaults="false"
                      units="-"
-                     description="time interval between updates of the coefficients in the linearized CHEM2D-OPP"/>
+                     description="time interval between updates of the coefficients of the ozone photochemistry parameterization"/>
 
                 <nml_option name="config_physics_suite" type="character" default_value="mesoscale_reference" in_defaults="true"
                      units="-"

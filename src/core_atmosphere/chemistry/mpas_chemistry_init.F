@@ -6,15 +6,15 @@
  use mpas_pool_routines, only : mpas_pool_get_config
  use mpas_timekeeping
 
- use mpas_chemistry_opp, only : init_opp
+ use mpas_chemistry_ozphys, only : init_ozphys
 
  implicit none
  private
  public:: chemistry_init
 
 
-!initialization and interpolation to MPAS mesh of input data needed to run the CHEM2D Ozone Photochemistry
-!Parameterization (CHEM2D-OPP) of McCormack et al. (2006).
+!initialization of the CCPP ozone photochemistry parameterization (McCormack et al. 2006), and of the alarm
+!that controls how often its forcing coefficients are interpolated in time.
 
 !add-ons and modifications to sourcecode:
 !----------------------------------------
@@ -73,8 +73,9 @@
                             messageType=MPAS_LOG_CRIT)
     end if
 
-    !--- initializes the input data need to run the CHEM2D-OPP of McCormack et al. (2006):
-    call init_opp(configs,mesh,chem_input)
+    !--- reads the ozone forcing data, and computes the interpolation indices from the data grid to the
+    !    MPAS mesh (see mpas_chemistry_ozphys):
+    call init_ozphys(configs,mesh,chem_input)
  end if
 
 ! call mpas_log_write('--- end subroutine chemistry_init:')

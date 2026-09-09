@@ -7,6 +7,11 @@
  use mpas_derived_types,only: mpas_pool_type
  use mpas_pool_routines,only: mpas_pool_get_array,mpas_pool_get_config,mpas_pool_get_dimension
 
+!from the CCPP physics repository (see src/core_atmosphere/Externals.cfg). The fields that are handed to
+!the ozone photochemistry parameterization are declared with the CCPP kind_phys, and are converted to and
+!from RKIND here, so that the interface is also correct in single-precision MPAS builds:
+ use machine,only: kind_phys
+
  implicit none
 
  type,public:: chems_vars
@@ -14,21 +19,20 @@
     integer:: im,levs,no3,no3levs
 
     !--- ozone related fields:
-    real(kind=RKIND),dimension(:),pointer    :: qozp      => null()
-    real(kind=RKIND),dimension(:,:),pointer  :: qoz       => null()
-    real(kind=RKIND),dimension(:,:),pointer  :: tend_qoz  => null()
-    real(kind=RKIND),dimension(:,:),pointer  :: qozd1     => null()
-    real(kind=RKIND),dimension(:,:),pointer  :: qozd2     => null()
-    real(kind=RKIND),dimension(:,:),pointer  :: qozd3     => null()
-    real(kind=RKIND),dimension(:,:),pointer  :: qozd4     => null()
-    real(kind=RKIND),dimension(:,:,:),pointer:: qozcoeffs => null()
+    real(kind=kind_phys),dimension(:,:),pointer  :: qoz       => null()
+    real(kind=kind_phys),dimension(:,:),pointer  :: tend_qoz  => null()
+    real(kind=kind_phys),dimension(:,:),pointer  :: qozd1     => null()
+    real(kind=kind_phys),dimension(:,:),pointer  :: qozd2     => null()
+    real(kind=kind_phys),dimension(:,:),pointer  :: qozd3     => null()
+    real(kind=kind_phys),dimension(:,:),pointer  :: qozd4     => null()
+    real(kind=kind_phys),dimension(:,:,:),pointer:: qozcoeffs => null()
 
     !--- local variables from the MPAS dynamical core:
-    real(kind=RKIND):: dt_c
-    real(kind=RKIND):: grav_c
-    real(kind=RKIND),dimension(:,:),pointer:: temp_c      => null()
-    real(kind=RKIND),dimension(:,:),pointer:: pres_c      => null()
-    real(kind=RKIND),dimension(:,:),pointer:: dpres_c     => null()
+    real(kind=kind_phys):: dt_c
+    real(kind=kind_phys):: grav_c
+    real(kind=kind_phys),dimension(:,:),pointer:: temp_c      => null()
+    real(kind=kind_phys),dimension(:,:),pointer:: pres_c      => null()
+    real(kind=kind_phys),dimension(:,:),pointer:: dpres_c     => null()
 
 
     contains
@@ -113,7 +117,6 @@
  if(.not.associated(this%qozd4)    ) allocate(this%qozd4(its:ite,kts:kte)        )
  if(.not.associated(this%tend_qoz) ) allocate(this%tend_qoz(its:ite,kts:kte)     )
 
- if(.not.associated(this%qozp)     ) allocate(this%qozp(no3levs))
  if(.not.associated(this%qozcoeffs)) allocate(this%qozcoeffs(its:ite,no3levs,no3))
 
 
@@ -145,7 +148,6 @@
  if(associated(this%qozd4)    ) deallocate(this%qozd4    )
  if(associated(this%tend_qoz) ) deallocate(this%tend_qoz )
 
- if(associated(this%qozp)     ) deallocate(this%qozp     )
  if(associated(this%qozcoeffs)) deallocate(this%qozcoeffs)
 
 
@@ -187,16 +189,16 @@
 
  real(kind=RKIND),pointer:: dt
  real(kind=RKIND),dimension(:,:),pointer  :: zgrid
- real(kind=RKIND),dimension(:,:),pointer  :: qo3,qv,dpres,pres
+ real(kind=RKIND),dimension(:,:),pointer  :: qo3,qv
+ real(kind=kind_phys),dimension(:,:),pointer:: dpres,pres
  real(kind=RKIND),dimension(:,:),pointer  :: exner,pressure_b,pressure_p,theta_m
  real(kind=RKIND),dimension(:,:,:),pointer:: scalars
 
  real(kind=RKIND):: fzm,fzp,tem,z0,z1,z2
- real(kind=RKIND),dimension(:,:),allocatable:: pres2
+ real(kind=kind_phys),dimension(:,:),allocatable:: pres2
 
-!local dimensions and arrays specific to CHEM2D-OPP:
+!local dimensions and arrays specific to the ozone photochemistry parameterization:
  integer,pointer:: nOPPLevels,nOPPCoeffs
- real(kind=RKIND),dimension(:),pointer    :: OPPpres
  real(kind=RKIND),dimension(:,:,:),pointer:: OPPcoeffs
 
 !-----------------------------------------------------------------------------------------------------------------
@@ -204,11 +206,10 @@
 ! call mpas_log_write('--- enter subroutine mpas_chemistry_from_MPAS:')
 
 
-!--- dimensions and arrays specific to CHEM2D-OPP:
+!--- dimensions and arrays specific to the ozone photochemistry parameterization:
  call mpas_pool_get_dimension(mesh,'nOPPLevels',nOPPLevels)
  call mpas_pool_get_dimension(mesh,'nOPPCoeffs',nOPPCoeffs)
 
- call mpas_pool_get_array(chem_input,'OPPpres'  ,OPPpres  )
  call mpas_pool_get_array(chem_input,'OPPcoeffs',OPPcoeffs)
 
 
@@ -241,10 +242,8 @@
  no3levs = this%no3levs
 
 
-!--- initializes input CHEM2D-OPP data:
- do k = 1,no3levs
-    this%qozp(k) = OPPpres(k)
- enddo
+!--- ozone forcing coefficients, valid at the current time (see mpas_chemistry_ozphys), reordered as the
+!    scheme expects them:
  do n = 1,no3
     do k = 1,no3levs
        do i = its,ite
@@ -254,9 +253,9 @@
  enddo
 
 
-!--- initializes local variables and arrays before call to o3_gfs_run:
- this%dt_c   = dt
- this%grav_c = gravity
+!--- initializes local variables and arrays before the call to the ozone photochemistry parameterization:
+ this%dt_c   = real(dt,kind_phys)
+ this%grav_c = real(gravity,kind_phys)
 
  do k = kts,kte
     do i = its,ite
@@ -269,10 +268,10 @@
        this%tend_qoz(i,k) = qo3(k,i)
 
        !output diagnostics:
-       this%qozd1(i,k)    = 0._RKIND
-       this%qozd2(i,k)    = 0._RKIND
-       this%qozd3(i,k)    = 0._RKIND
-       this%qozd4(i,k)    = 0._RKIND
+       this%qozd1(i,k)    = 0._kind_phys
+       this%qozd2(i,k)    = 0._kind_phys
+       this%qozd3(i,k)    = 0._kind_phys
+       this%qozd4(i,k)    = 0._kind_phys
     enddo
  enddo
 
@@ -344,8 +343,8 @@
  integer:: no3,no3levs
  integer,pointer:: nCells,nVertLevels
 
- real(kind=RKIND):: dt_c
- real(kind=RKIND),dimension(:,:),pointer:: qoz,tend_qoz,qozd1,qozd2,qozd3,qozd4
+ real(kind=kind_phys):: dt_c
+ real(kind=kind_phys),dimension(:,:),pointer:: qoz,tend_qoz,qozd1,qozd2,qozd3,qozd4
  real(kind=RKIND),dimension(:,:),pointer:: oppdiag1,oppdiag2,oppdiag3,oppdiag4
  real(kind=RKIND),dimension(:,:),pointer:: rqo3oppten
 

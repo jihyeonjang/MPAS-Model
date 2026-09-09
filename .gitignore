@@ -61,3 +61,8 @@ stream_list.*
 *.i90
 
 src/core_*/inc
+
+# Externals checked out by manage_externals (see src/core_atmosphere/Externals.cfg)
+src/core_atmosphere/physics/physics_mmm/
+src/core_atmosphere/physics/physics_noaa/
+src/core_atmosphere/chemistry/physics_ccpp/

@@ -9,7 +9,7 @@
 !from physics:
  use mpas_atmphys_utilities
 
- use mpas_chemistry_opp,only: opp_from_MPAS
+ use mpas_chemistry_ozphys,only: update_ozphys
 
  implicit none
  private
@@ -17,8 +17,8 @@
  !public:: chemistry_run_init,chemistry_timetracker
 
 
-!defines alarm to update the coefficients used in the CHEM2D Ozone Photochemistry Parameterization (CHEM2D-OPP)
-!of McCormack et al.,2006).
+!defines the alarm used to update the coefficients of the CCPP ozone photochemistry parameterization
+!(McCormack et al. 2006).
 
 !add-ons and modifications to sourcecode:
 !----------------------------------------
@@ -95,11 +95,11 @@
     call mpas_pool_get_subpool(block%structs,'mesh'      ,mesh      )
     call mpas_pool_get_subpool(block%structs,'chem_input',chem_input)
 
-    !update the coefficients for the GFS linearized CHEM2D-OPP (Mc Cormack et al. 2006):
+    !update the coefficients of the ozone photochemistry parameterization (McCormack et al. 2006):
     if(mpas_is_alarm_ringing(clock,oppAlarmID,ierr=ierr)) then
        call mpas_reset_clock_alarm(clock,oppAlarmID,ierr=ierr)
-       call mpas_log_write('--- time to update CHEM2D-OPP coefficients.')
-       call opp_from_MPAS(julday,curr_julday,mesh,chem_input)
+       call mpas_log_write('--- time to update the ozone photochemistry coefficients.')
+       call update_ozphys(julday,curr_julday,mesh,chem_input)
     endif
 
     block => block%next

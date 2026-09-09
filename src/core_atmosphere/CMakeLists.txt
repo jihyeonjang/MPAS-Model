@@ -313,13 +313,27 @@ set(ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES
 list(TRANSFORM ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES PREPEND diagnostics/)
 
 # chemistry/
+# CCPP physics: the subset of files needed by the ozone photochemistry parameterization. These sources are
+# used unmodified from the checkout made by manage_externals above (see Externals.cfg), and the same list is
+# built by chemistry/ccpp_ozone/Makefile.
+set(ATMOSPHERE_CORE_CHEMISTRY_CCPP_SOURCES
+    hooks/machine.F
+    hooks/physcons.F90
+    tools/funcphys.f90
+    photochem/module_ozphys.F90
+)
+
+list(TRANSFORM ATMOSPHERE_CORE_CHEMISTRY_CCPP_SOURCES PREPEND chemistry/physics_ccpp/physics/)
+
+# machine.F is fixed-form Fortran, unlike the rest of the MPAS sources.
+set_source_files_properties(chemistry/physics_ccpp/physics/hooks/machine.F PROPERTIES Fortran_FORMAT FIXED)
+
 set(ATMOSPHERE_CORE_CHEMISTRY_SOURCES
-    opp/o3_gfs.F
     mpas_chemistry_driver.F
     mpas_chemistry_init.F
     mpas_chemistry_interface.F
     mpas_chemistry_manager.F
-    mpas_chemistry_opp.F
+    mpas_chemistry_ozphys.F
     mpas_chemistry_packages.F
     mpas_chemistry_todynamics.F)
 list(TRANSFORM ATMOSPHERE_CORE_CHEMISTRY_SOURCES PREPEND chemistry/)
@@ -367,6 +381,7 @@ add_library(core_atmosphere ${ATMOSPHERE_CORE_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_MMM_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_WRF_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_NOAA_SOURCES}
+            ${ATMOSPHERE_CORE_CHEMISTRY_CCPP_SOURCES}
             ${ATMOSPHERE_CORE_CHEMISTRY_SOURCES}
             ${ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES}
             ${ATMOSPHERE_CORE_DYNAMICS_SOURCES})
