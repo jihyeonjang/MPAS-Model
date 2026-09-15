@@ -1,5 +1,5 @@
 !=================================================================================================================
- module mpas_chemistry_interface
+ module mpas_atmchem_interface
  use mpas_log
  use mpas_kind_types
  use mpas_atmphys_constants,only: R_v,R_d
@@ -347,7 +347,7 @@
  real(kind=RKIND):: dt_c
  real(kind=RKIND),dimension(:,:),pointer:: qoz,tend_qoz,qozd1,qozd2,qozd3,qozd4
  real(kind=RKIND),dimension(:,:),pointer:: oppdiag1,oppdiag2,oppdiag3,oppdiag4
- real(kind=RKIND),dimension(:,:),pointer:: rqo3oppten
+ real(kind=RKIND),dimension(:,:),pointer:: photochem_tend_o3
 
 !-----------------------------------------------------------------------------------------------------------------
 ! call mpas_log_write(' ')
@@ -358,7 +358,7 @@
  call mpas_pool_get_array(diag_chemistry,'oppdiag3',oppdiag3)
  call mpas_pool_get_array(diag_chemistry,'oppdiag4',oppdiag4)
 
- call mpas_pool_get_array(tend_chemistry,'rqo3oppten',rqo3oppten)
+ call mpas_pool_get_array(tend_chemistry,'photochem_tend_o3',photochem_tend_o3)
 
  its     = this%its
  ite     = this%ite
@@ -391,7 +391,7 @@
        oppdiag2(k,i) = qozd2(i,k)
        oppdiag3(k,i) = qozd3(i,k)
        oppdiag4(k,i) = qozd4(i,k)
-       rqo3oppten(k,i) = tend_qoz(i,k)
+       photochem_tend_o3(k,i) = tend_qoz(i,k)
     enddo
  enddo
 
@@ -400,6 +400,6 @@
  end subroutine mpas_chemistry_to_MPAS
 
 !=================================================================================================================
- end module mpas_chemistry_interface
+ end module mpas_atmchem_interface
 !=================================================================================================================
 

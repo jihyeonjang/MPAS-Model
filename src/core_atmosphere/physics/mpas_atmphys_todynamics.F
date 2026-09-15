@@ -215,7 +215,6 @@
  allocate(tend_th(nVertLevels,nCellsSolve))
  tend_th = 0._RKIND
 
- tend_scalars(:,:,:)      = 0._RKIND
  tend_ru_physics(:,:)     = 0._RKIND
  tend_rtheta_physics(:,:) = 0._RKIND
  tend_rho_physics(:,:)    = 0._RKIND

@@ -109,10 +109,9 @@ use mpas_stream_manager
 
 !local pointers:
  logical,pointer:: config_do_restart,    &
-                   config_o3climatology, &
                    config_oml1d
 
- character(len=StrKIND),pointer::            &
+ character(len=StrKIND),pointer:: config_o3_source, &
                    config_convection_scheme, &
                    config_lsm_scheme,        &
                    config_microp_scheme,     &
@@ -169,7 +168,7 @@ use mpas_stream_manager
 !call mpas_log_write('--- enter subroutine physics_init:')
 
  call mpas_pool_get_config(configs,'config_do_restart'       ,config_do_restart       )
- call mpas_pool_get_config(configs,'config_o3climatology'    ,config_o3climatology    )
+ call mpas_pool_get_config(configs,'config_o3_source'         ,config_o3_source         )
  call mpas_pool_get_config(configs,'config_convection_scheme',config_convection_scheme)
  call mpas_pool_get_config(configs,'config_lsm_scheme'       ,config_lsm_scheme       )
  call mpas_pool_get_config(configs,'config_microp_scheme'    ,config_microp_scheme    )
@@ -406,7 +405,7 @@ use mpas_stream_manager
  endif
 
 !read the input files that contain the monthly-mean ozone climatology on fixed pressure levels:
- if(config_o3climatology) call init_o3climatology(mesh,atm_input)
+ if(trim(config_o3_source) == 'climatology') call init_o3climatology(mesh,atm_input)
 
 !initialization of global surface properties. set here for now, but may be moved when time
 !manager is implemented:

@@ -1,0 +1,7 @@
+/physics/photochem/module_ozphys.F90
+/physics/photochem/module_ozphys.meta
+/physics/photochem/module_h2ophys.F90
+/physics/photochem/module_h2ophys.meta
+/physics/hooks/machine.F
+/physics/hooks/physcons.F90
+/physics/tools/funcphys.f90

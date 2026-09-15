@@ -1,5 +1,5 @@
 !=================================================================================================================
- module mpas_chemistry_manager
+ module mpas_atmchem_manager
  use mpas_log
  use mpas_kind_types
  use mpas_derived_types
@@ -9,7 +9,7 @@
 !from physics:
  use mpas_atmphys_utilities
 
- use mpas_chemistry_opp,only: opp_from_MPAS
+ use mpas_atmchem_opp,only: opp_from_MPAS
 
  implicit none
  private
@@ -22,7 +22,7 @@
 
 !add-ons and modifications to sourcecode:
 !----------------------------------------
-! * in subroutines chemistry_timetracker and chemistry_run_init, hit return if config_o3prognostic
+! * in subroutines chemistry_timetracker and chemistry_run_init, hit return if config_photochem_o3_scheme
 !   is set to false.
 !   Laura D. Fowler (laura@ucar.edu) / 2021-04-08.
 
@@ -47,7 +47,7 @@
  type(mpas_pool_type),pointer:: mesh
  type(mpas_pool_type),pointer:: chem_input
 
- logical,pointer:: o3prognostic
+ character(len=StrKIND),pointer:: o3_scheme
 
 !local variables:
  type(MPAS_Time_Type):: currTime
@@ -62,9 +62,9 @@
 
 !-----------------------------------------------------------------------------------------------------------------
 
-!--- hit return if config_o3prognostic is set to false:
- call mpas_pool_get_config(domain%configs,'config_o3prognostic',o3prognostic)
- if(.not. o3prognostic) return
+!--- hit return if config_photochem_o3_scheme is set to false:
+ call mpas_pool_get_config(domain%configs,'config_photochem_o3_scheme',o3_scheme)
+ if(trim(o3_scheme) /= 'opp') return
 
 ! call mpas_log_write(' ')
 ! call mpas_log_write('--- enter subroutine chemistry_timetracker:')
@@ -111,7 +111,7 @@
  end subroutine chemistry_timetracker
 
 !=================================================================================================================
- end module mpas_chemistry_manager
+ end module mpas_atmchem_manager
 !=================================================================================================================
 
 

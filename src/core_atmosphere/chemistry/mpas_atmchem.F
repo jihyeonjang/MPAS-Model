@@ -5,7 +5,7 @@
 ! distributed with this code, or at https://mpas-dev.github.io/license.html .
 !
 !-----------------------------------------------------------------------
-!  mpas_atm_chemistry
+!  mpas_atmchem
 !
 !> \brief Manages interactions with chemistry packages
 !> \author CheMPAS-A Developers
@@ -17,7 +17,7 @@
 !>  into the CheMPAS-A system.
 !
 !-------------------------------------------------------------------------
-module mpas_atm_chemistry
+module mpas_atmchem
 
     implicit none
 
@@ -128,4 +128,4 @@ module mpas_atm_chemistry
 
     end subroutine chemistry_finalize
 
-end module mpas_atm_chemistry
+end module mpas_atmchem

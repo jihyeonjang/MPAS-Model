@@ -3,7 +3,9 @@
 <!-- ========================================================================================================= -->
 
  <packages>
-      <package name="chem2dopp_in" description="CHEM2D ozone photochemistry parameterization."/>
+      <package name="o3_prognostic_in" description="Prognostic ozone state and transport."/>
+      <package name="opp_in" description="Legacy CHEM2D-OPP resources."/>
+      <package name="photochem_tendencies_in" description="Scheme-neutral photochemistry tendencies."/>
  </packages>
 
 
@@ -21,7 +23,7 @@
       <var_array name="scalars" type="real" dimensions="nVertLevels nCells Time">
            <var name="qo3" array_group="passive" units="kg kg^{-1}"
                 description="Ozone mixing ratio"
-                packages="chem2dopp_in"/>
+                packages="o3_prognostic_in"/>
       </var_array>
 
  </var_struct>
@@ -32,7 +34,7 @@
       <var_array name="scalars_tend" type="real" dimensions="nVertLevels nCells Time">
            <var name="tend_qo3" name_in_code="qo3" array_group="passive" units="kg m^{-3} s^{-1}"
                 description="Tendency of ozone mass per unit volume divided by d(zeta)/dz"
-                packages="chem2dopp_in"/>
+                packages="o3_prognostic_in"/>
       </var_array>
 
  </var_struct>
@@ -42,7 +44,7 @@
            <var name="lbc_qo3" name_in_code="qo3" array_group="passive"
                 units="kg kg^{-1} s^{-1}"
                 description="Lateral boundary tendency of ozone mixing ratio"
-                packages="chem2dopp_in"/>
+                packages="o3_prognostic_in"/>
       </var_array>
  </var_struct>
 
@@ -52,16 +54,16 @@
       <!-- Monthly mean pressure and coefficients needed in the linearized CHEM2D-OPP: -->
       <var name="OPPpres" type="real" dimensions="nOPPLevels" units="Pa"
            description="fixed pressure levels in the linearized CHEM2D-OPP (McCormack et al.,2006)"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
       <var name="OPPdata" type="real" dimensions="nMonths nOPPCoeffs nOPPLevels nCells" units="various"
            description="monthly-mean coefficients used in the linearized CHEM2D-OPP (McCormack et al.,2006)"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
       <!-- Coefficients needed in the linearized CHEM2D-OPP interpolated to the actual timestamp: -->
       <var name="OPPcoeffs" type="real" dimensions="nOPPCoeffs nOPPLevels nCells Time" units="various"
            description="coefficients used in the linearized CHEM2D-OPP at the actual timestamp"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
  </var_struct>
 
@@ -70,28 +72,32 @@
 
       <var name="oppdiag1" type="real" dimensions="nVertLevels nCells Time" units=" "
            description="diagnostic 1 from the linearized CHEM2D-OPP"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
       <var name="oppdiag2" type="real" dimensions="nVertLevels nCells Time" units=" "
            description="diagnostic 2 from the linearized CHEM2D-OPP"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
       <var name="oppdiag3" type="real" dimensions="nVertLevels nCells Time" units=" "
            description="diagnostic 3 from the linearized CHEM2D-OPP"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
       <var name="oppdiag4" type="real" dimensions="nVertLevels nCells Time" units=" "
            description="diagnostic 4 from the linearized CHEM2D-OPP"
-           packages="chem2dopp_in"/>
+           packages="opp_in"/>
 
  </var_struct>
 
 
  <var_struct name="tend_chemistry" time_levs="1">
 
-      <var name="rqo3oppten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
-           description="ozone tendency from the linearized CHEM2D-OPP"
-           packages="chem2dopp_in"/>
+      <var name="photochem_tend_o3" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+           description="additive ozone photochemistry mixing-ratio tendency"
+           packages="photochem_tendencies_in"/>
+
+      <var name="photochem_tend_h2o" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+           description="additive stratospheric-water photochemistry mixing-ratio tendency"
+           packages="photochem_tendencies_in"/>
 
  </var_struct>
 

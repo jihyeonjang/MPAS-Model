@@ -13,6 +13,7 @@
 
  use mpas_atmphys_utilities
  use mpas_atmphys_vars, only: l_mp_tables
+ use mpas_atmchem_config, only: atmchem_configuration_valid
 
  implicit none
  private
@@ -105,9 +106,10 @@
                                   config_radt_cld_scheme,   &
                                   config_radt_lw_scheme,    &
                                   config_radt_sw_scheme,    &
-                                  config_sfclayer_scheme
- logical,pointer::                config_o3climatology,     &
-                                  config_o3prognostic
+                                  config_sfclayer_scheme,  &
+                                  config_o3_source,         &
+                                  config_photochem_o3_scheme, &
+                                  config_photochem_h2o_scheme
 
 !-----------------------------------------------------------------------------------------------------------------
 !call mpas_log_write('')
@@ -123,8 +125,9 @@
  call mpas_pool_get_config(configs,'config_radt_lw_scheme'   ,config_radt_lw_scheme   )
  call mpas_pool_get_config(configs,'config_radt_sw_scheme'   ,config_radt_sw_scheme   )
  call mpas_pool_get_config(configs,'config_sfclayer_scheme'  ,config_sfclayer_scheme  )
- call mpas_pool_get_config(configs,'config_o3climatology'    ,config_o3climatology    )
- call mpas_pool_get_config(configs,'config_o3prognostic'     ,config_o3prognostic     )
+ call mpas_pool_get_config(configs,'config_o3_source'              ,config_o3_source              )
+ call mpas_pool_get_config(configs,'config_photochem_o3_scheme'     ,config_photochem_o3_scheme     )
+ call mpas_pool_get_config(configs,'config_photochem_h2o_scheme'    ,config_photochem_h2o_scheme    )
 
  call mpas_log_write('')
  call mpas_log_write('----- Setting up physics suite '''//trim(config_physics_suite)//''' -----')
@@ -310,38 +313,14 @@
 
  endif
 
-!ozone scheme:
- if (config_o3prognostic .and. config_o3climatology) then
-    call mpas_log_write(' ')
-    call mpas_log_write('*******************************************************************************', &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write('The options config_o3prognostic = ''true'' and config_o3climatology = ''true''' , &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write('are incompatible. Set one of these two options to ''false''.'                   , &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write('*******************************************************************************', &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write(' ')
-    write(mpas_err_message,'(A,L1,A,L1)') 'wrong choice for ozone: config_o3climatology = ', &
-          config_o3climatology, ' or config_o3prognostic = ', config_o3prognostic
+! Independent ozone-source and photochemistry configuration validation.
+ if (.not. atmchem_configuration_valid(trim(config_o3_source), &
+                                       trim(config_photochem_o3_scheme), &
+                                       trim(config_photochem_h2o_scheme))) then
+    write(mpas_err_message,'(A,3(1X,A))') 'invalid atmosphere chemistry configuration:', &
+         trim(config_o3_source),trim(config_photochem_o3_scheme),trim(config_photochem_h2o_scheme)
     call physics_error_fatal(mpas_err_message)
- end if
-
- if (.not. config_o3prognostic .and. .not. config_o3climatology) then
-    call mpas_log_write(' ')
-    call mpas_log_write('*******************************************************************************', &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write('The options config_o3prognostic = ''false'' and config_o3climatology = ''false''' , &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write('are incompatible. Set one of these two options to ''true''.'                   , &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write('*******************************************************************************', &
-                        messageType=MPAS_LOG_ERR)
-    call mpas_log_write(' ')
-    write(mpas_err_message,'(A,L1,A,L1)') 'wrong choice for ozone: config_o3climatology = ', &
-          config_o3climatology, ' or config_o3prognostic = ', config_o3prognostic
-    call physics_error_fatal(mpas_err_message)
- end if
+ endif
 
 !checks if any physics process is called. if not, return:
  moist_physics = .true.
@@ -516,7 +495,7 @@
  real (kind=RKIND), dimension(:,:,:), pointer :: scalars
  integer, pointer :: nVertLevels
  integer, pointer :: index_qo3
- logical, pointer :: o3prognostic
+ character(len=StrKIND), pointer :: config_o3_source
 
  type (block_type), pointer :: block
  type (mpas_pool_type), pointer :: meshPool
@@ -576,9 +555,9 @@
 
  end if
 
- call mpas_pool_get_config(blocklist % configs, 'config_o3prognostic' , o3prognostic )
+ call mpas_pool_get_config(blocklist % configs, 'config_o3_source', config_o3_source)
 
- if (o3prognostic) then
+ if (trim(config_o3_source) == 'prognostic') then
 
      maxqo3_local = -huge(maxqo3_local)
      block => blockList
@@ -605,11 +584,11 @@
          call mpas_log_write(' ')
          call mpas_log_write('*******************************************************************************', &
                              messageType=MPAS_LOG_ERR)
-         call mpas_log_write('The option config_o3prognostic = ''true'' requires non-zero values of the ozone', &
+         call mpas_log_write('config_o3_source = ''prognostic'' requires non-zero values of the ozone', &
                              messageType=MPAS_LOG_ERR)
          call mpas_log_write('mixing ratio (qo3), but qo3 is zero everywhere in the model input.'             , &
                              messageType=MPAS_LOG_ERR)
-         call mpas_log_write('Either set config_o3prognostic = ''false'' and config_o3climatology = ''true'' ', &
+         call mpas_log_write('Either set config_o3_source = ''climatology'' ', &
                              messageType=MPAS_LOG_ERR)
          call mpas_log_write('to run climatological ozone instead in the &physics namelist, or generate qo3'  , &
                              messageType=MPAS_LOG_ERR)

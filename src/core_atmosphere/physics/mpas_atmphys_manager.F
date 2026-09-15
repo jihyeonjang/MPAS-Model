@@ -148,13 +148,13 @@
 
 !local pointers:
  logical,pointer:: config_frac_seaice,        &
-                   config_o3climatology,      &
                    config_sfc_albedo,         &
                    config_sst_update,         &
                    config_sstdiurn_update,    &
                    config_deepsoiltemp_update
 
- character(len=StrKIND),pointer:: config_convection_scheme, &
+ character(len=StrKIND),pointer:: config_o3_source, &
+                                  config_convection_scheme, &
                                   config_radt_lw_scheme,    &
                                   config_radt_sw_scheme
 
@@ -193,7 +193,7 @@
  call mpas_pool_get_config(domain%blocklist%configs,'config_radtsw_interval',config_radtsw_interval)
 
  call mpas_pool_get_config(domain%blocklist%configs,'config_frac_seaice'        ,config_frac_seaice        )
- call mpas_pool_get_config(domain%blocklist%configs,'config_o3climatology'      ,config_o3climatology      )
+ call mpas_pool_get_config(domain%blocklist%configs,'config_o3_source'           ,config_o3_source           )
  call mpas_pool_get_config(domain%blocklist%configs,'config_sfc_albedo'         ,config_sfc_albedo         )
  call mpas_pool_get_config(domain%blocklist%configs,'config_sst_update'         ,config_sst_update         )
  call mpas_pool_get_config(domain%blocklist%configs,'config_sstdiurn_update'    ,config_sstdiurn_update    )
@@ -301,7 +301,7 @@
  endif
 
 !check to see if it is time to update ozone to the current julian day in the RRTMG radiation codes:
- if(config_o3climatology) then
+ if(trim(config_o3_source) == 'climatology') then
     block => domain % blocklist
     do while(associated(block))
 
@@ -386,7 +386,8 @@
  type (MPAS_streamManager_type), intent(inout) :: stream_manager
 
 !local pointers:
- character(len=StrKIND),pointer:: config_convection_scheme, &
+ character(len=StrKIND),pointer:: config_o3_source, &
+                                  config_convection_scheme, &
                                   config_lsm_scheme,        &
                                   config_microp_scheme,     &
                                   config_radt_lw_scheme,    &

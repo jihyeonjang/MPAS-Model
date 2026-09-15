@@ -1,12 +1,13 @@
 !=================================================================================================================
- module mpas_chemistry_init
+ module mpas_atmchem_init
  use mpas_kind_types
  use mpas_log, only : mpas_log_write
  use mpas_derived_types, only : mpas_pool_type, MPAS_LOG_CRIT
  use mpas_pool_routines, only : mpas_pool_get_config
  use mpas_timekeeping
 
- use mpas_chemistry_opp, only : init_opp
+ use mpas_atmchem_opp, only : init_opp
+ use mpas_atmchem_config, only : atmchem_configuration_valid
 
  implicit none
  private
@@ -18,7 +19,7 @@
 
 !add-ons and modifications to sourcecode:
 !----------------------------------------
-! * in subroutine chemistry_init, hit return if config_o3prognostic is set to false.
+! * in subroutine chemistry_init, hit return if config_photochem_o3_scheme is set to false.
 !   Laura D. Fowler (laura@ucar.edu) / 2021-04-08.
 
 
@@ -41,7 +42,7 @@
  character(len=*), parameter:: oppAlarmID = 'opp'
 
  character(len=StrKIND),pointer:: OPP_update
- logical,pointer:: o3prognostic
+ character(len=StrKIND),pointer:: o3_source,o3_scheme,h2o_scheme
 
  type(MPAS_Time_Type):: startTime,alarmStartTime
  type(MPAS_TimeInterval_Type):: alarmTimeStep
@@ -50,8 +51,14 @@
 
 !-----------------------------------------------------------------------------------------------------------------
 
-!--- hit return if config_o3prognostic is set to false:
- call mpas_pool_get_config(configs,'config_o3prognostic',o3prognostic)
+!--- hit return if config_photochem_o3_scheme is set to false:
+ call mpas_pool_get_config(configs,'config_o3_source',o3_source)
+ call mpas_pool_get_config(configs,'config_photochem_o3_scheme',o3_scheme)
+ call mpas_pool_get_config(configs,'config_photochem_h2o_scheme',h2o_scheme)
+ if(.not.atmchem_configuration_valid(trim(o3_source),trim(o3_scheme),trim(h2o_scheme))) then
+    call mpas_log_write('Invalid atmosphere chemistry configuration',messageType=MPAS_LOG_CRIT)
+    return
+ endif
 ! if(.not. o3prognostic) return
 
  call mpas_pool_get_config(configs,'config_OPP_update',OPP_update)
@@ -59,7 +66,7 @@
 ! call mpas_log_write(' ')
 ! call mpas_log_write('--- enter subroutine chemistry_init:')
 
- if (o3prognostic) then
+ if (trim(o3_scheme) == 'opp') then
     !--- get startTime prior to initializating alarms:
     startTime = mpas_get_clock_time(clock,MPAS_START_TIME,ierr)
 
@@ -82,5 +89,5 @@
  end subroutine chemistry_init
 
 !=================================================================================================================
- end module mpas_chemistry_init
+ end module mpas_atmchem_init
 !=================================================================================================================

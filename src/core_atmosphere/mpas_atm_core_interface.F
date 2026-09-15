@@ -110,7 +110,7 @@ module atm_core_interface
       use mpas_atmphys_packages
 #endif
 #ifdef DO_CHEMISTRY
-      use mpas_chemistry_packages
+      use mpas_atmchem_packages
 #endif
 
       implicit none

@@ -29,7 +29,7 @@
 !mpas_atmphys_o3climatology contains the subroutines needed to initialize,interpolate,and update
 !the climatological monthly-mean ozone volume mixing ratios o3clim to the MPAS grid. Input data
 !files are the same as the ones used in the CAM long- and short-wave radiation codes.
-!when namelist parameter config_o3climatology is set to true, o3clim is used in the RRTMG long-
+!when namelist parameter config_o3_source is set to true, o3clim is used in the RRTMG long-
 !wave and short-wave radiation codes,and replaces the annual-mean ozone sounding used by default.
 !Laura D. Fowler (send comments to laura@ucar.edu).
 !2013-07-03.

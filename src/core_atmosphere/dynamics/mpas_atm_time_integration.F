@@ -33,7 +33,7 @@ module atm_time_integration
    use mpas_atmphys_utilities
 #endif
 #ifdef DO_CHEMISTRY
-   use mpas_chemistry_todynamics, only: chemistry_get_tend
+   use mpas_atmchem_todynamics, only: chemistry_get_tend
 #endif
 
    use mpas_atm_boundaries, only : nSpecZone, nRelaxZone, nBdyZone, mpas_atm_get_bdy_state, mpas_atm_get_bdy_tend  ! regional_MPAS addition
@@ -1929,7 +1929,7 @@ module atm_time_integration
 
       real (kind=RKIND), dimension(:,:), pointer :: w
       real (kind=RKIND), dimension(:,:), pointer :: u, uReconstructZonal, uReconstructMeridional, uReconstructX, uReconstructY, uReconstructZ
-      real (kind=RKIND), dimension(:,:,:), pointer :: scalars, scalars_1, scalars_2
+      real (kind=RKIND), dimension(:,:,:), pointer :: scalars, scalars_1, scalars_2, tend_scalars
 
       real (kind=RKIND), dimension(:,:), pointer :: rqvdynten, rthdynten, theta_m
       real (kind=RKIND), dimension(:,:), pointer :: pressure_p, rtheta_p, exner, tend_u
@@ -1945,7 +1945,7 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:,:), pointer :: scalars_pre
       real (kind=RKIND), dimension(:,:),   pointer :: rqo3totten
       integer, pointer :: index_qo3
-      logical, pointer :: config_o3prognostic
+      character(len=StrKIND), pointer :: config_o3_source
 #endif
 
       real (kind=RKIND)  :: time_dyn_step
@@ -1971,7 +1971,7 @@ module atm_time_integration
       call mpas_pool_get_config(block % configs, 'config_convection_scheme', config_convection_scheme)
 #endif
 #ifdef DO_CHEMISTRY
-      call mpas_pool_get_config(block % configs, 'config_o3prognostic', config_o3prognostic)
+      call mpas_pool_get_config(block % configs, 'config_o3_source', config_o3_source)
 #endif
 
       !
@@ -2160,6 +2160,10 @@ module atm_time_integration
 
       call mpas_timer_stop('atm_compute_moist_coefficients')
 
+      ! Initialize scalar tendency assembly once before additive components.
+      call mpas_pool_get_array(tend, 'scalars_tend', tend_scalars)
+      tend_scalars(:,:,:) = 0.0_RKIND
+
 #ifdef DO_PHYSICS
       call pre_physics_get_tend(block % configs, state, diag, tend)
       call mpas_timer_start('physics_get_tend')
@@ -2187,7 +2191,7 @@ module atm_time_integration
       call chemistry_get_tend(block % configs, mesh, state, tend, tend_chemistry)
       call mpas_timer_stop('chemistry_get_tend')
 
-      if (config_o3prognostic) then
+      if (trim(config_o3_source) == 'prognostic') then
          call mpas_pool_get_array(state, 'scalars', scalars_pre, 1)
 
 !         if (index_qo3 .gt. 0) then
@@ -2836,7 +2840,7 @@ module atm_time_integration
       call mpas_pool_get_array(state, 'scalars', scalars_2, 2)
       call mpas_pool_get_array(diag, 'rqo3totten', rqo3totten)
 
-      if (config_o3prognostic .and. index_qo3 .gt. 0) then
+      if (trim(config_o3_source) == 'prognostic' .and. index_qo3 .gt. 0) then
          !qo3new(:,:) =  scalars_2(index_qo3,:,:)
          !rqo3totten(:,:) = ( scalars_2(index_qo3,:,:) - qo3_old(:,:) ) / dt
          rqo3totten(:,:) = ( scalars_2(index_qo3,:,:) - scalars_pre(index_qo3,:,:) ) / dt

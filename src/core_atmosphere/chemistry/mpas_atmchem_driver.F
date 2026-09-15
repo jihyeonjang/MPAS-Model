@@ -1,12 +1,12 @@
 !=================================================================================================================
- module mpas_chemistry_driver
+ module mpas_atmchem_driver
  use mpas_log
  use mpas_kind_types
  use mpas_derived_types
  use mpas_pool_routines,only: mpas_pool_get_subpool
  use mpas_timer,only: mpas_timer_start,mpas_timer_stop
 
- use mpas_chemistry_interface
+ use mpas_atmchem_interface
  use o3_gfs
 
 
@@ -23,7 +23,7 @@
 
 !add-ons and modifications to sourcecode:
 !----------------------------------------
-! * in subroutine chemistry_driver, hit return if config_o3prognostic is set to false.
+! * in subroutine chemistry_driver, hit return if config_photochem_o3_scheme is set to false.
 !   Laura D. Fowler (laura@ucar.edu) / 2021-04-08.
 
 
@@ -52,7 +52,7 @@
 
  character(len=StrKIND):: errmsg
 
- logical,pointer:: o3prognostic
+ character(len=StrKIND),pointer:: o3_scheme
  logical:: ldiag3d,qdiag3d
 
  integer:: i,k,n
@@ -65,13 +65,13 @@
 
 !-----------------------------------------------------------------------------------------------------------------
 
-!--- hit return if config_o3prognostic is set to false:
- call mpas_pool_get_config(domain%configs,'config_o3prognostic',o3prognostic)
+!--- hit return if config_photochem_o3_scheme is set to false:
+ call mpas_pool_get_config(domain%configs,'config_photochem_o3_scheme',o3_scheme)
 
- if(.not. o3prognostic) return
+ if(trim(o3_scheme) /= 'opp') return
 
 ! call mpas_log_write(' ')
-! call mpas_log_write('--- enter subroutine mpas_chemistry_driver:')
+! call mpas_log_write('--- enter subroutine mpas_atmchem_driver:')
 
  time_lev = 1
 
@@ -155,11 +155,11 @@
  call mpas_timer_stop('chemistry driver')
 
 
-! call mpas_log_write('--- end subroutine mpas_chemistry_driver:')
+! call mpas_log_write('--- end subroutine mpas_atmchem_driver:')
 
  end subroutine chemistry_driver
 
 !=================================================================================================================
- end module mpas_chemistry_driver
+ end module mpas_atmchem_driver
 !=================================================================================================================
 

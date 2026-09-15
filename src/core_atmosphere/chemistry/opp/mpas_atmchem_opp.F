@@ -1,5 +1,5 @@
 !=================================================================================================================
- module mpas_chemistry_opp
+ module mpas_atmchem_opp
  use mpas_kind_types
  use mpas_log,only          : mpas_log_write
  use mpas_derived_types,only: mpas_pool_type
@@ -39,7 +39,6 @@
 
 
 !local variables:
- logical,pointer:: o3climatology,o3prognostic
  integer:: i,iCell,i1,i2,k,m,n
  integer,pointer:: nCells,nMonths,nO3Coeffs,nO3Levels
 
@@ -52,8 +51,6 @@
 ! call mpas_log_write(' ')
 ! call mpas_log_write('--- enter subroutine init_opp:')
 
- call mpas_pool_get_config(configs,'config_o3climatology',o3climatology)
- call mpas_pool_get_config(configs,'config_o3prognostic' ,o3prognostic )
 
  call mpas_pool_get_dimension(mesh,'nCells'    ,nCells   )
  call mpas_pool_get_dimension(mesh,'nMonths'   ,nMonths  )
@@ -246,5 +243,5 @@
  end subroutine opp_from_MPAS
 
 !=================================================================================================================
- end module mpas_chemistry_opp
+ end module mpas_atmchem_opp
 !=================================================================================================================

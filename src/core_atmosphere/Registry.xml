@@ -2026,7 +2026,7 @@
                 <!-- tendencies related to the prognostic ozone photochemistry parameterization scheme (OPP) -->
                 <var name="rqo3totten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
                      description="total tendency of ozone mixing ratio"
-                     packages="chem2dopp_in"/>
+                     packages="o3_prognostic_in"/>
 
         </var_struct>
 
@@ -2291,15 +2291,30 @@
                      description="logical for configuration of deep soil temperatures"
                      possible_values=".true. for slowly time-varying deep soil temperatures; .false. otherwise"/>
 
-                <nml_option name="config_o3climatology" type="logical" default_value="true" in_defaults="false"
+                <nml_option name="config_o3_source" type="character" default_value="climatology" in_defaults="false"
                      units="-"
-                     description="logical for configuration of input ozone data in RRMTG long- and short-wave radiation"
-                     possible_values=".true. for using monthly-varying ozone data; .false. for using fixed vertical profile"/>
+                     description="source of ozone supplied to radiation"
+                     possible_values="climatology, prognostic"/>
 
-                <nml_option name="config_o3prognostic" type="logical" default_value="false" in_defaults="false"
+                <nml_option name="config_photochem_o3_scheme" type="character" default_value="off" in_defaults="false"
                      units="-"
-                     description="logical for configuration of ozone as a prognostic variable"
-                     possible_values=".true. for using prognostic ozone scheme; .false. for using climatological ozone"/>
+                     description="ozone photochemical tendency component"
+                     possible_values="off, opp, oz_phys_2006, oz_phys_2015"/>
+
+                <nml_option name="config_photochem_h2o_scheme" type="character" default_value="off" in_defaults="false"
+                     units="-"
+                     description="stratospheric-water photochemical tendency component"
+                     possible_values="off, h2o_phys"/>
+
+                <nml_option name="config_photochem_o3_forcing_file" type="character" default_value="global_o3prdlos.f77" in_defaults="false"
+                     units="-" description="NRL ozone production/loss forcing file"/>
+
+                <nml_option name="config_photochem_h2o_forcing_file" type="character" default_value="global_h2oprdlos.f77" in_defaults="false"
+                     units="-" description="NRL stratospheric-water production/loss forcing file"/>
+
+
+
+
 
                 <nml_option name="config_microp_re" type="logical" default_value="false" in_defaults="false"
                      units="-"

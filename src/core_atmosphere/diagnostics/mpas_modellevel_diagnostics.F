@@ -19,7 +19,7 @@ module mpas_modellevel_diagnostics
 
     type (MPAS_clock_type), pointer :: clock
 
-    logical, pointer :: config_o3prognostic, config_o3climatology
+    character(len=StrKIND), pointer :: config_o3_source
 
     public :: modellevel_diagnostics_setup, &
               modellevel_diagnostics_compute
@@ -59,8 +59,7 @@ module mpas_modellevel_diagnostics
         call mpas_pool_get_subpool(all_pools, 'diag', diag)
         call mpas_pool_get_subpool(all_pools, 'diag_physics', diag_physics)
 
-        call mpas_pool_get_config(configs,'config_o3prognostic', config_o3prognostic)
-        call mpas_pool_get_config(configs,'config_o3climatology',config_o3climatology)
+        call mpas_pool_get_config(configs,'config_o3_source',config_o3_source)
         !call mpas_pool_get_array(diag, 'temperature', temperature)
         !call mpas_pool_get_array(diag, 'spechum', spechum)
         !
@@ -167,7 +166,7 @@ module mpas_modellevel_diagnostics
         if ( index_qo3 .gt. -1 ) then
            call mpas_log_write('********************************************************************************')
            call mpas_log_write('mpas_modellevel_diagnostics: o3vmr is from scalars(index_qo3,:,:), index_qo3=$i', intArgs=(/ index_qo3 /))
-           call mpas_log_write('config_o3prognostic = $l',logicArgs=(/ config_o3prognostic /))
+           call mpas_log_write('config_o3_source = '//trim(config_o3_source))
            call mpas_log_write('********************************************************************************')
            do iCell=1,nCellsSolve
            do k=1,nVertLevels
@@ -177,10 +176,10 @@ module mpas_modellevel_diagnostics
         else
            call mpas_log_write('********************************************************************************')
            call mpas_log_write('mpas_modellevel_diagnostics: o3vmr is ')
-           if ( config_o3climatology ) then
-               call mpas_log_write('from o3 climatology. config_o3climatology = $l',logicArgs=(/ config_o3climatology /))
+           if (trim(config_o3_source) == 'climatology') then
+               call mpas_log_write('from ozone climatology')
            else
-               call mpas_log_write('zero (default value). config_o3climatology = $l',logicArgs=(/ config_o3climatology /))
+               call mpas_log_write('from prognostic ozone')
            end if
            call mpas_log_write('********************************************************************************')
 

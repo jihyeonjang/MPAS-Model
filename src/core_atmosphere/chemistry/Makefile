@@ -1,5 +1,6 @@
 .SUFFIXES: .F .o
 
+
 ifeq ($(CORE),atmosphere)
 COREDEF = -Dmpas
 endif
@@ -18,18 +19,18 @@ endif
 # Chemistry objects
 #
 # OPP capability is always compiled. Whether OPP is actually used is
-# controlled at runtime by config_o3prognostic in namelist.atmosphere.
+# controlled at runtime by config_photochem_o3_scheme in namelist.atmosphere.
 # ----------------------------------------------------------------------
 
 OBJS = \
-	mpas_atm_chemistry.o \
-	mpas_chemistry_driver.o \
-	mpas_chemistry_init.o \
-	mpas_chemistry_interface.o \
-	mpas_chemistry_manager.o \
-	mpas_chemistry_opp.o \
-	mpas_chemistry_packages.o \
-	mpas_chemistry_todynamics.o
+	mpas_atmchem.o \
+	mpas_atmchem_driver.o \
+	mpas_atmchem_init.o \
+	mpas_atmchem_interface.o \
+	mpas_atmchem_manager.o \
+	opp/mpas_atmchem_opp.o \
+	mpas_atmchem_packages.o \
+	mpas_atmchem_todynamics.o
 
 # ----------------------------------------------------------------------
 # OPP chemistry
@@ -37,6 +38,10 @@ OBJS = \
 
 core_chemistry_opp:
 	(cd opp; $(MAKE) all COREDEF="$(COREDEF)")
+
+
+core_chemistry_photochem:
+	$(MAKE) -C photochem all COREDEF="$(COREDEF)" FCINCLUDES="$(FCINCLUDES)"
 
 # ----------------------------------------------------------------------
 # MUSICA
@@ -52,9 +57,9 @@ endif
 # Main chemistry library
 # ----------------------------------------------------------------------
 
-core_chemistry: core_chemistry_opp $(if $(filter true,$(MUSICA)),core_mpas_musica)
+core_chemistry: core_chemistry_opp core_chemistry_photochem $(if $(filter true,$(MUSICA)),core_mpas_musica)
 	$(MAKE) chem_interface COREDEF="$(COREDEF)" PHYSICS="$(PHYSICS)" CHEMISTRY="$(CHEMISTRY)"
-	ar -ru libchem.a $(OBJS)
+	ar -ru libchem.a $(OBJS) photochem/*.o
 
 ifeq ($(MUSICA),true)
 	$(MAKE) -C ./musica mpas_musica_lib
@@ -66,9 +71,9 @@ chem_interface: $(OBJS)
 # DEPENDENCIES
 # ----------------------------------------------------------------------
 
-mpas_chemistry_driver.o: mpas_chemistry_interface.o
+mpas_atmchem_driver.o: mpas_atmchem_interface.o
 
-mpas_chemistry_init.o: mpas_chemistry_opp.o
+mpas_atmchem_init.o: opp/mpas_atmchem_opp.o
 
 # ----------------------------------------------------------------------
 # Clean
@@ -77,6 +82,7 @@ mpas_chemistry_init.o: mpas_chemistry_opp.o
 clean:
 	$(RM) *.o *.mod *.f90 libchem.a
 	(cd opp; $(MAKE) clean)
+	$(MAKE) -C photochem clean
 	(cd musica; $(MAKE) clean)
 	@# Certain systems with Intel compilers generate *.i files
 	@# This removes them during the clean process
@@ -95,3 +101,7 @@ else
 	$(FC) $(CPPFLAGS) $(COREDEF) $(PHYSICS) $(CHEMISTRY) $(FFLAGS) -c $*.F \
 		$(CPPINCLUDES) $(FCINCLUDES) -I. -I./opp -I./musica -I.. -I../dynamics -I../physics -I../physics/physics_wrf -I../../framework $(MPAS_ESMF_INC)
 endif
+
+opp/mpas_atmchem_opp.o: opp/mpas_atmchem_opp.F
+	$(FC) $(CPPFLAGS) $(COREDEF) $(PHYSICS) $(CHEMISTRY) $(FFLAGS) -c $< -o $@ \
+		$(CPPINCLUDES) $(FCINCLUDES) -I. -I./opp -I.. -I../physics -I../../framework $(MPAS_ESMF_INC)

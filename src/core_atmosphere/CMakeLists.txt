@@ -314,15 +314,21 @@ list(TRANSFORM ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES PREPEND diagnostics/)
 
 # chemistry/
 set(ATMOSPHERE_CORE_CHEMISTRY_SOURCES
+    mpas_atmchem.F
+    mpas_atmchem_config.F90
     opp/o3_gfs.F
-    mpas_chemistry_driver.F
-    mpas_chemistry_init.F
-    mpas_chemistry_interface.F
-    mpas_chemistry_manager.F
-    mpas_chemistry_opp.F
-    mpas_chemistry_packages.F
-    mpas_chemistry_todynamics.F)
+    mpas_atmchem_driver.F
+    mpas_atmchem_init.F
+    mpas_atmchem_interface.F
+    mpas_atmchem_manager.F
+    opp/mpas_atmchem_opp.F
+    mpas_atmchem_packages.F
+    mpas_atmchem_todynamics.F)
 list(TRANSFORM ATMOSPHERE_CORE_CHEMISTRY_SOURCES PREPEND chemistry/)
+
+# Photochemistry owns its external and build closure.
+include(${CMAKE_CURRENT_SOURCE_DIR}/chemistry/photochem/CMakeLists.txt)
+list(APPEND ATMOSPHERE_CORE_CHEMISTRY_SOURCES ${ATMOSPHERE_CORE_PHOTOCHEM_SOURCES})
 
 # dynamics/
 set(ATMOSPHERE_CORE_DYNAMICS_SOURCES

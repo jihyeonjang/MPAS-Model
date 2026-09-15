@@ -38,7 +38,7 @@ module atm_core
       use mpas_atm_halos, only: atm_build_halo_groups, exchange_halo_group
 #ifdef DO_CHEMISTRY
 #ifdef MPAS_USE_MUSICA
-      use mpas_atm_chemistry, only: chemistry_init_musica
+      use mpas_atmchem, only: chemistry_init_musica
 #endif
 #endif
 
@@ -381,8 +381,8 @@ module atm_core
       use mpas_atmphys_manager
 #endif
 #ifdef DO_CHEMISTRY
-      use mpas_chemistry_init
-      use mpas_chemistry_manager
+      use mpas_atmchem_init
+      use mpas_atmchem_manager
 #endif
 
       implicit none
@@ -1020,10 +1020,10 @@ module atm_core
 #endif
 #ifdef DO_CHEMISTRY
 #ifdef MPAS_USE_MUSICA
-      use mpas_atm_chemistry, only: chemistry_step
+      use mpas_atmchem, only: chemistry_step
 #endif
-      use mpas_chemistry_driver,only : chemistry_driver
-      use mpas_chemistry_manager,only: chemistry_timetracker
+      use mpas_atmchem_driver,only : chemistry_driver
+      use mpas_atmchem_manager,only: chemistry_timetracker
 #endif
       use mpas_atm_halos, only: exchange_halo_group
 
@@ -1086,7 +1086,7 @@ module atm_core
 
 #ifdef DO_CHEMISTRY
 #ifdef MPAS_USE_MUSICA
-      use mpas_atm_chemistry, only: chemistry_finalize
+      use mpas_atmchem, only: chemistry_finalize
 #endif
 #endif
 
