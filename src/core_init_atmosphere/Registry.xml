@@ -222,6 +222,11 @@
                      description="The set of hydrometeor species that are to be processed from input intermediate files when generating ICs and LBCs for real-data simulations."
                      possible_values="`detect_automatically', or a semicolon-separated list of hydrometeor names (e.g., `qc;qr'"/>
 
+                <nml_option name="config_use_ozone"          type="logical"       default_value="false"
+                     units="-"
+                     description="Whether to use ozone mixing ratio as the first-guess variable. If this option is False, ozone is not read for the initial condition."
+                     possible_values="true or false"/>
+
         </nml_record>
 
         <nml_record name="vertical_grid" in_defaults="true">
@@ -394,6 +399,7 @@
                 <package name="noahmp" description="Whether to process, read, and write static fields only required by Noah-MP"/>
                 <package name="qc" description="Whether QC is available for inclusion in ICs and LBCs"/>
                 <package name="qr" description="Whether QR is available for inclusion in ICs and LBCs"/>
+                <package name="met_ozone" description="Whether ozone is available for inclusion in ICs and LBCs"/>
         </packages>
 
 
@@ -606,7 +612,7 @@
                         <var name="v_init" packages="met_stage_out"/>
                         <var name="t_init" packages="met_stage_out"/>
                         <var name="qv_init" packages="met_stage_out"/>
-                        <var_array name="scalars" packages="met_stage_out;microphysics_aerosols"/>
+                        <var_array name="scalars" packages="met_stage_out;microphysics_aerosols;met_ozone"/>
                         <var name="u" packages="met_stage_out"/>
                         <var name="w" packages="met_stage_out"/>
                         <var name="dz" packages="met_stage_out"/>
@@ -1181,6 +1187,10 @@
                              description="Gocart water-friendly aerosol number concentration"
                              packages="microphysics_aerosols"/>
 
+                        <var name="qo3" array_group="passive" units="kg kg^{-1}"
+                             description="Ozone mixing ratio"
+                             packages="met_ozone"/>
+
                         <var name="tke" array_group="turbulence" units="m^2 s^{-2}"
                              description="Turbulent kinetic energy for the prognostic tke LES scheme"/>
                 </var_array>
@@ -1227,6 +1237,10 @@
                         <var name="lbc_nwfa" array_group="number" units="nb kg^{-1}"
                              description="Gocart water-friendly aerosol number concentration on lateral boundary cells"
                              packages="microphysics_aerosols"/>
+
+                        <var name="lbc_qo3" array_group="passive" units="kg kg^{-1}"
+                             description="Ozone mixing ratio on lateral boundary cells"
+                             packages="met_ozone"/>
                 </var_array>
 
         </var_struct>
@@ -1260,6 +1274,10 @@
 
                 <var name="sh_fg" name_in_code="sh" type="real" dimensions="nFGLevels nCells Time" units="kg kg^{-1}"
                      description="First guess specific humidity"
+                     packages="first_guess_field"/>
+
+                <var name="o3_fg" name_in_code="o3" type="real" dimensions="nFGLevels nCells Time" units="kg kg^{-1}"
+                     description="First guess ozone mixing ratio"
                      packages="first_guess_field"/>
 
                 <var name="soilz_fg" name_in_code="soilz" type="real" dimensions="nCells Time" units="m"
@@ -1417,6 +1435,10 @@
 
                 <var name="spechum" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
                      description="Specific humidity"
+                     packages="met_stage_out"/>
+
+                <var name="o3mr" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
+                     description="Ozone mixing ratio"
                      packages="met_stage_out"/>
 
                 <!-- reconstructed horizontal velocity vectors at cell centers -->
