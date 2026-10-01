@@ -29,8 +29,10 @@
 !mpas_atmphys_o3climatology contains the subroutines needed to initialize,interpolate,and update
 !the climatological monthly-mean ozone volume mixing ratios o3clim to the MPAS grid. Input data
 !files are the same as the ones used in the CAM long- and short-wave radiation codes.
-!when namelist parameter config_o3climatology is set to true, o3clim is used in the RRTMG long-
-!wave and short-wave radiation codes,and replaces the annual-mean ozone sounding used by default.
+!When namelist option config_o3_source is set to 'climatology', o3clim is used by the RRTMG long-
+!and short-wave radiation schemes. When config_o3_source is 'prognostic', RRTMG instead uses the
+!transported ozone mixing ratio qo3. CAM radiation continues to use its own monthly climatological
+!ozone data independently of config_o3_source.
 !Laura D. Fowler (send comments to laura@ucar.edu).
 !2013-07-03.
 !
@@ -50,6 +52,9 @@
 !   Laura D. Fowler (laura@ucar.edu) / 2014-05-15.
 ! * moved the subroutine vinterp_ozn to its own module module_ra_rrtmg_vinterp.F in physics_wrf.
 !   Laura D. Fowler (laura@ucar.edu) / 2017-01-27.
+! * changed namelist option from config_o3climatology = true/false and config_o3prognostic=true/false
+!   to config_o3_source='climatology'/'prognostic'.
+!   Jihyeon Jang (jjang@ucar.edu) / 2026-10-01.
 
 
  contains

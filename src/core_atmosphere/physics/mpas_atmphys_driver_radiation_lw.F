@@ -315,7 +315,7 @@
  type(mpas_pool_type),intent(inout):: diag_physics
 
 !local pointers:
- logical,pointer:: config_o3climatology
+ character(len=StrKIND),pointer:: config_o3_source
  logical,pointer:: config_microp_re
  character(len=StrKIND),pointer:: radt_lw_scheme
  character(len=StrKIND),pointer:: microp_scheme
@@ -336,7 +336,7 @@
 !-----------------------------------------------------------------------------------------------------------------
 
  call mpas_pool_get_config(configs,'config_microp_re'     ,config_microp_re    )
- call mpas_pool_get_config(configs,'config_o3climatology' ,config_o3climatology)
+ call mpas_pool_get_config(configs,'config_o3_source'     ,config_o3_source)
  call mpas_pool_get_config(configs,'config_radt_lw_scheme',radt_lw_scheme      )
  call mpas_pool_get_config(configs,'config_microp_scheme' ,microp_scheme       )
 
@@ -467,7 +467,7 @@
        enddo
        enddo
 
-       if(config_o3climatology) then
+       if(trim(config_o3_source) == 'climatology') then
           !ozone mixing ratio:
           do k = 1, num_oznLevels
              pin_p(k) = pin(k)
@@ -821,7 +821,7 @@
  type(mpas_pool_type),intent(inout):: tend_physics
 
 !local pointers:
- logical,pointer:: config_o3climatology
+ character(len=StrKIND),pointer:: config_o3_source
  character(len=StrKIND),pointer:: radt_lw_scheme
  character(len=StrKIND),pointer:: radt_cld_overlap,radt_cld_dcorrlen
 
@@ -833,7 +833,7 @@
 !-----------------------------------------------------------------------------------------------------------------
 !call mpas_log_write(' --- enter subroutine driver_radiation_lw: ')
 
- call mpas_pool_get_config(configs,'config_o3climatology'    ,config_o3climatology)
+ call mpas_pool_get_config(configs,'config_o3_source'        ,config_o3_source)
  call mpas_pool_get_config(configs,'config_radt_lw_scheme'   ,radt_lw_scheme      )
  call mpas_pool_get_config(configs,'config_radt_cld_overlap' ,radt_cld_overlap    )
  call mpas_pool_get_config(configs,'config_radt_cld_dcorrlen',radt_cld_dcorrlen   )
@@ -844,8 +844,15 @@
 !call to longwave radiation scheme:
  radiation_lw_select: select case (trim(radt_lw_scheme))
     case ("rrtmg_lw")
+       !--- o3input selects the ozone that RRTMG sees: 2 is the monthly climatology interpolated
+       !    onto the model levels, 3 is the transported ozone mixing ratio qo3. 0 is the fixed
+       !    vertical profile built into the radiation code, and is not reachable from the namelist.
        o3input = 0
-       if(config_o3climatology) o3input = 2
+       if(trim(config_o3_source) == 'climatology') then
+          o3input = 2
+       elseif(trim(config_o3_source) == 'prognostic') then
+          o3input = 3
+       endif
 
        !initialization of cloud overlap option:
        if(trim(radt_cld_overlap) == "none"              ) cldovrlp = 0
@@ -866,7 +873,8 @@
             p3d      = pres_hyd_p  , p8w        = pres2_hyd_p   , pi3d      = pi_p       , &
             t3d      = t_p         , t8w        = t2_p          , dz8w      = dz_p       , &
             qv3d     = qvrad_p     , qc3d       = qcrad_p       , qi3d      = qirad_p    , &
-            qs3d     = qsrad_p     , cldfra3d   = cldfrac_p     , tsk       = tsk_p      , &
+            qs3d     = qsrad_p     , cldfra3d   = cldfrac_p     , qo33d     = qo3_p      , &
+            tsk      = tsk_p       ,                                                       &
             emiss    = sfc_emiss_p , xland      = xland_p       , xice      = xice_p     , &
             snow     = snow_p      , xlat       = xlat_p        , julday    = julday     , &
             icloud   = icloud      , cldovrlp   = cldovrlp      , idcor     = idcor      , &

@@ -1,0 +1,90 @@
+<!-- ========================================================================================================= -->
+<!-- ARRAYS SPECIFIC TO THE CCPP OZONE AND STRATOSPHERIC WATER VAPOR PHOTOCHEMISTRY:                            -->
+<!--                                                                                                           -->
+<!-- The forcing data themselves (the pressure axis, the latitude axis, the time axis and the production and    -->
+<!-- loss coefficients) are held inside the CCPP derived types ty_ozphys and ty_h2ophys, which allocate them    -->
+<!-- when the forcing files are read. Only the quantities that are defined per cell, or that MPAS has to write  -->
+<!-- to an output stream, are declared here.                                                                    -->
+<!--                                                                                                           -->
+<!-- The latitude interpolation indices and weights below are computed once, at initialization, by              -->
+<!-- ty_ozphys%setup_o3prog and ty_h2ophys%setup. They depend on latitude only, so they are stored rather than  -->
+<!-- recomputed every time step. The time interpolation of the coefficients is done every time step, into a     -->
+<!-- temporary array that the photochemistry driver allocates and frees itself.                                 -->
+<!-- ========================================================================================================= -->
+
+ <var_struct name="diag_physics" time_levs="1">
+
+      <var name="jindx1_o3" type="integer" dimensions="nCells" units="-"
+                description="lower latitude index of the ozone forcing data for each cell"
+                packages="photochem_o3_in"/>
+
+      <var name="jindx2_o3" type="integer" dimensions="nCells" units="-"
+                description="upper latitude index of the ozone forcing data for each cell"
+                packages="photochem_o3_in"/>
+
+      <var name="ddy_o3" type="real" dimensions="nCells" units="-"
+                description="latitude interpolation weight of the ozone forcing data for each cell"
+                packages="photochem_o3_in"/>
+
+      <var name="jindx1_h2o" type="integer" dimensions="nCells" units="-"
+                description="lower latitude index of the water vapor forcing data for each cell"
+                packages="photochem_h2o_in"/>
+
+      <var name="jindx2_h2o" type="integer" dimensions="nCells" units="-"
+                description="upper latitude index of the water vapor forcing data for each cell"
+                packages="photochem_h2o_in"/>
+
+      <var name="ddy_h2o" type="real" dimensions="nCells" units="-"
+                description="latitude interpolation weight of the water vapor forcing data for each cell"
+                packages="photochem_h2o_in"/>
+
+<!-- Diagnostics returned by the CCPP ozone scheme. -->
+<!-- For oz_phys_2015 the four fields form an additive decomposition of the ozone increment. -->
+
+      <var name="do3_dt_prd" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="ozone tendency, production and loss term"
+                packages="photochem_o3_diag_in"/>
+
+      <var name="do3_dt_ozmx" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="ozone tendency, ozone mixing ratio term"
+                packages="photochem_o3_diag_in"/>
+
+      <var name="do3_dt_temp" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="ozone tendency, temperature term"
+                packages="photochem_o3_diag_in"/>
+
+      <var name="do3_dt_ohoz" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="ozone tendency, overhead ozone column term"
+                packages="photochem_o3_diag_in"/>
+
+      <var name="dqv_dt_prd" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="CCPP water-vapor production/loss diagnostic divided by the model timestep; do not assume additive closure with dqv_dt_qvmx"
+                packages="photochem_h2o_diag_in"/>
+
+      <var name="dqv_dt_qvmx" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="CCPP water-vapor relaxation diagnostic divided by the model timestep; sign convention is scheme-defined and the field is not an additive budget term"
+                packages="photochem_h2o_diag_in"/>
+
+ </var_struct>
+
+
+ <var_struct name="tend_physics" time_levs="1">
+
+      <var name="rqo3phten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="tendency of the ozone mixing ratio due to the ozone photochemistry"
+                packages="photochem_o3_in"/>
+
+      <var name="rqvphten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="tendency of the water vapor mixing ratio due to the water vapor photochemistry"
+                packages="photochem_h2o_in"/>
+
+      <!-- The total change of the ozone mixing ratio over one time step. Unlike rqo3phten,
+           this is diagnosed at the end of atm_srk3 from state(time_lev=2)-state(time_lev=1), after
+           positivity clipping and regional boundary resetting. It therefore closes the actual model-state
+           ozone budget exactly; it is not intended as a pure transport-plus-chemistry process diagnostic. -->
+
+      <var name="rqo3totten" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1} s^{-1}"
+                description="realized total ozone tendency from the final state increment over one model time step"
+                packages="photochem_o3_in"/>
+
+ </var_struct>

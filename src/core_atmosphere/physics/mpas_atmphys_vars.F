@@ -228,11 +228,20 @@
     znu_hyd_p          !(pres_hyd_p / P0) needed in the Tiedtke convection scheme              [Pa]
 
 !=================================================================================================================
+!... variables related to the ozone and stratospheric water vapor photochemistry. These are the local copies of
+!    the transported ozone mixing ratio and of the tendencies that the CCPP schemes return. The forcing data
+!    themselves stay inside the CCPP derived types; see mpas_atmphys_photochem_ccpp.F.
+!=================================================================================================================
+
+ real(kind=RKIND),dimension(:,:,:),allocatable:: &
+    qo3_p              !ozone mixing ratio                                                  [kg/kg]
+
+!=================================================================================================================
 !... variables related to ozone climatlogy:
 !=================================================================================================================
 
  real(kind=RKIND),dimension(:,:,:),allocatable:: &
-    o3clim_p           !climatological ozone volume mixing ratio                         [???]
+    o3clim_p           !climatological ozone volume mixing ratio                          [mol/mol]
 
 !=================================================================================================================
 !... variables and arrays related to parameterization of cloud microphysics:

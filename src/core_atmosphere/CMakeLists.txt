@@ -41,6 +41,8 @@ set(ATMOSPHERE_CORE_PHYSICS_SOURCES
     mpas_atmphys_driver_lsm_noahmp.F
     mpas_atmphys_lsm_noahmpfinalize.F
     mpas_atmphys_lsm_noahmpinit.F
+    mpas_atmphys_driver_photochem.F
+    mpas_atmphys_photochem_ccpp.F
 )
 list(TRANSFORM ATMOSPHERE_CORE_PHYSICS_SOURCES PREPEND physics/)
 
@@ -341,6 +343,7 @@ set(ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES
     mpas_cloud_diagnostics.F
     mpas_convective_diagnostics.F
     mpas_isobaric_diagnostics.F
+    mpas_modellevel_diagnostics.F
     mpas_pv_diagnostics.F
     mpas_soundings.F
 )
@@ -382,7 +385,47 @@ set(ATMOSPHERE_CORE_INCLUDES
     structs_and_variables.inc)
 
 
+# The CCPP photochemistry subset (see Externals.cfg and
+# physics/physics_photochem/ccpp_photochem.sparse)
+set(ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES
+    hooks/machine.F
+    hooks/physcons.F90
+    tools/funcphys.f90
+    photochem/module_ozphys.F90
+    photochem/module_h2ophys.F90
+)
+list(TRANSFORM ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES PREPEND physics/physics_photochem/ccpp-physics/physics/)
+
+# The CCPP and NoahMP both define a Fortran module named "machine"
+# (physics/physics_noahmp/utility/Machine.F90).
+# They must not write machine.mod into the same directory.
+# for use module_ozphys and use module_h2ophys,
+# get that directory as a source-specific include path,
+# so the CCPP machine.mod is never visible while NoahMP sources are compiled.
+set(CCPP_PHOTOCHEM_MODULE_DIR ${CMAKE_CURRENT_BINARY_DIR}/photochem_ccpp_modules)
+add_library(atmosphere_photochem_ccpp OBJECT ${ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES})
+mpas_fortran_target(atmosphere_photochem_ccpp)
+set_target_properties(atmosphere_photochem_ccpp PROPERTIES
+    Fortran_MODULE_DIRECTORY ${CCPP_PHOTOCHEM_MODULE_DIR}
+    POSITION_INDEPENDENT_CODE ON)
+target_include_directories(atmosphere_photochem_ccpp PRIVATE ${CCPP_PHOTOCHEM_MODULE_DIR})
+
+# machine.F is fixed-form Fortran, unlike the rest of the CCPP subset.
+set_source_files_properties(physics/physics_photochem/ccpp-physics/physics/hooks/machine.F
+                            PROPERTIES Fortran_FORMAT FIXED)
+
+# MPAS uses SINGLE_PRECISION while the CCPP machine module uses SINGLE_PREC.
+# Keep kind_phys and RKIND
+# consistent in single-precision builds.
+if(NOT MPAS_DOUBLE_PRECISION)
+    target_compile_definitions(atmosphere_photochem_ccpp PRIVATE SINGLE_PREC)
+endif()
+
+set_source_files_properties(physics/mpas_atmphys_photochem_ccpp.F
+                            PROPERTIES INCLUDE_DIRECTORIES ${CCPP_PHOTOCHEM_MODULE_DIR})
+
 add_library(core_atmosphere ${ATMOSPHERE_CORE_SOURCES}
+            $<TARGET_OBJECTS:atmosphere_photochem_ccpp>
             ${ATMOSPHERE_CORE_PHYSICS_NOAMP_UTILITY_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_NOAMP_MPAS_DRIVER_SOURCES}
             ${ATMOSPHERE_CORE_PHYSICS_NOAMP_SRC_SOURCES}

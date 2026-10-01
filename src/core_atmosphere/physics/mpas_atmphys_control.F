@@ -107,6 +107,10 @@
                                   config_radt_sw_scheme,    &
                                   config_sfclayer_scheme
 
+ character(len=StrKIND),pointer:: config_o3_source,            &
+                                  config_photochem_o3_scheme,  &
+                                  config_photochem_h2o_scheme
+
 !-----------------------------------------------------------------------------------------------------------------
 !call mpas_log_write('')
 !call mpas_log_write('--- enter subroutine physics_namelist_check:')
@@ -121,6 +125,10 @@
  call mpas_pool_get_config(configs,'config_radt_lw_scheme'   ,config_radt_lw_scheme   )
  call mpas_pool_get_config(configs,'config_radt_sw_scheme'   ,config_radt_sw_scheme   )
  call mpas_pool_get_config(configs,'config_sfclayer_scheme'  ,config_sfclayer_scheme  )
+
+ call mpas_pool_get_config(configs,'config_o3_source'            ,config_o3_source            )
+ call mpas_pool_get_config(configs,'config_photochem_o3_scheme'  ,config_photochem_o3_scheme  )
+ call mpas_pool_get_config(configs,'config_photochem_h2o_scheme' ,config_photochem_h2o_scheme )
 
  call mpas_log_write('')
  call mpas_log_write('----- Setting up physics suite '''//trim(config_physics_suite)//''' -----')
@@ -315,7 +323,9 @@
     config_pbl_scheme        .eq. 'off' .and. &
     config_radt_lw_scheme    .eq. 'off' .and. &
     config_radt_sw_scheme    .eq. 'off' .and. &
-    config_sfclayer_scheme   .eq. 'off') moist_physics = .false.
+    config_sfclayer_scheme   .eq. 'off' .and. &
+    config_photochem_o3_scheme  .eq. 'off' .and. &
+    config_photochem_h2o_scheme .eq. 'off') moist_physics = .false.
 
  call mpas_log_write('')
  call mpas_log_write('    config_microp_scheme       = '//trim(config_microp_scheme))
@@ -328,6 +338,80 @@
  call mpas_log_write('    config_sfclayer_scheme     = '//trim(config_sfclayer_scheme))
  call mpas_log_write('    config_lsm_scheme          = '//trim(config_lsm_scheme))
  call mpas_log_write('')
+
+!
+!the ozone and stratospheric water vapor photochemistry:
+!
+!config_o3_source selects which ozone the RRTMG long- and short-wave codes see (o3input = 2 or 3 in
+!mpas_atmphys_driver_radiation_lw/sw.F). An unrecognized value would silently leave o3input = 0, that is
+!radiation with no ozone at all, so it is rejected here.
+ if(trim(config_o3_source) /= 'climatology' .and. trim(config_o3_source) /= 'prognostic') then
+    call mpas_log_write('    config_o3_source           = '//trim(config_o3_source),messageType=MPAS_LOG_ERR)
+    call physics_error_fatal('config_o3_source must be either ''climatology'' or ''prognostic''.')
+ endif
+
+!the CCPP also provides oz_phys_2006, and it is accepted here, but it is deliberately left out of the
+!possible_values of config_photochem_o3_scheme in the Registry: run_o3prog_2006 only updates ozone for a
+!forcing file with 2 or 4 coefficients, and the file distributed with the GFS has 6. init_ozphys checks
+!that, so an unusable combination stops the model rather than running silently.
+ select case(trim(config_photochem_o3_scheme))
+    case('off','oz_phys_2015')
+    case('oz_phys_2006')
+       call mpas_log_write('')
+       call mpas_log_write('*** config_photochem_o3_scheme = ''oz_phys_2006'' is not among the ' // &
+                           'supported values of that option.')
+       call mpas_log_write('*** It needs an ozone forcing file with 2 or 4 coefficients, which is not ' // &
+                           'the one distributed with the GFS.')
+       call mpas_log_write('')
+    case default
+       call mpas_log_write('    config_photochem_o3_scheme = '//trim(config_photochem_o3_scheme), &
+                           messageType=MPAS_LOG_ERR)
+       call physics_error_fatal('config_photochem_o3_scheme must be ''off'' or ''oz_phys_2015''.')
+ end select
+
+ select case(trim(config_photochem_h2o_scheme))
+    case('off','h2o_phys')
+    case default
+       call mpas_log_write('    config_photochem_h2o_scheme = '//trim(config_photochem_h2o_scheme), &
+                           messageType=MPAS_LOG_ERR)
+       call physics_error_fatal('config_photochem_h2o_scheme must be ''off'' or ''h2o_phys''.')
+ end select
+
+ if(trim(config_o3_source) == 'climatology' .and. trim(config_photochem_o3_scheme) /= 'off') then
+    call mpas_log_write('    config_o3_source           = '//trim(config_o3_source),messageType=MPAS_LOG_ERR)
+    call mpas_log_write('    config_photochem_o3_scheme = '//trim(config_photochem_o3_scheme), &
+                        messageType=MPAS_LOG_ERR)
+    call physics_error_fatal('(1) Climatological ozone requires config_o3_source = ''climatology'' and config_photochem_o3_scheme = ''off'' ; ' // &
+                             '(2) Ozone photochemistry requires config_o3_source = ''prognostic''.')
+ endif
+
+!--- Ozone photochemistry is intended to advance the prognostic qo3 field that is also seen by radiation.
+!    CAM radiation does not consume qo3; allowing CAM in either waveband would therefore create a partially
+!    or completely uncoupled ozone-radiation system. Fail fast instead of silently running that scientifically
+!    inconsistent configuration. This restriction applies to O3 photochemistry only; H2O photochemistry may
+!    still be used with CAM because CAM consumes the model water-vapor field.
+ if(trim(config_photochem_o3_scheme) /= 'off' .and. &
+    (trim(config_radt_lw_scheme) == 'cam_lw' .or. trim(config_radt_sw_scheme) == 'cam_sw')) then
+    call mpas_log_write('    config_radt_lw_scheme       = '//trim(config_radt_lw_scheme),messageType=MPAS_LOG_ERR)
+    call mpas_log_write('    config_radt_sw_scheme       = '//trim(config_radt_sw_scheme),messageType=MPAS_LOG_ERR)
+    call mpas_log_write('    config_photochem_o3_scheme  = '//trim(config_photochem_o3_scheme),messageType=MPAS_LOG_ERR)
+    call physics_error_fatal('ozone photochemistry cannot be combined with CAM radiation because CAM does not ' // &
+                             'use the prognostic qo3 field. Use RRTMG for both wavebands, or turn ozone ' // &
+                             'photochemistry off.')
+ endif
+
+ call mpas_log_write('    config_o3_source            = '//trim(config_o3_source))
+ call mpas_log_write('    config_photochem_o3_scheme  = '//trim(config_photochem_o3_scheme))
+ call mpas_log_write('    config_photochem_h2o_scheme = '//trim(config_photochem_h2o_scheme))
+ call mpas_log_write('')
+
+ if(trim(config_o3_source) == 'prognostic' .and. &
+    trim(config_photochem_o3_scheme) == 'off') then
+    call mpas_log_write('*** config_o3_source = ''prognostic'' with config_photochem_o3_scheme = ''off'':')
+    call mpas_log_write('*** qo3 is read from the initial conditions and transported by the dynamics, but')
+    call mpas_log_write('*** nothing changes it by the photochem scheme. The radiation uses that transported field.')
+    call mpas_log_write('')
+ endif
 
  end subroutine physics_namelist_check
 
@@ -473,9 +557,20 @@
  integer, pointer, dimension(:) :: ivgtyp
  integer :: all_water, iall_water
  character (len=StrKIND), pointer :: gwdo_scheme
+
+ ! Prognostic ozone checks. The state scalar field is used for both
+ ! cold-start initial conditions and restart states.
+ character (len=StrKIND), pointer :: o3_source
+ real (kind=RKIND) :: maxqo3_local, maxqo3_global
+ real (kind=RKIND), dimension(:,:), pointer :: qo3
+ real (kind=RKIND), dimension(:,:,:), pointer :: scalars
+ integer, pointer :: nVertLevels
+ integer, pointer :: index_qo3
+
  type (block_type), pointer :: block
  type (mpas_pool_type), pointer :: meshPool
  type (mpas_pool_type), pointer :: sfc_inputPool
+ type (mpas_pool_type), pointer :: statePool
 
  ierr = 0
 
@@ -525,6 +620,65 @@
                              messageType=MPAS_LOG_ERR)
          call mpas_log_write('*******************************************************************************', &
                              messageType=MPAS_LOG_ERR)
+         ierr = ierr + 1
+     end if
+
+ end if
+
+ !
+ ! When config_o3_source = 'prognostic', qo3 is used directly by RRTMG.
+ ! After initial-condition/restart loading, reject a state in which qo3 is effectively
+ ! zero everywhere. This catches missing/uninitialized O3MR in an initial condition
+ ! or missing qo3 in a restart file before radiation runs without ozone.
+ ! Users must provide valid prognostic ozone or use config_o3_source = 'climatology'.
+ !
+ call mpas_pool_get_config(blockList % configs, 'config_o3_source', o3_source)
+
+ if (trim(o3_source) == 'prognostic') then
+     maxqo3_local = 0.0_RKIND
+
+     block => blockList
+     do while (associated(block))
+         call mpas_pool_get_subpool(block % structs, 'mesh', meshPool)
+         call mpas_pool_get_subpool(block % structs, 'state', statePool)
+         call mpas_pool_get_dimension(meshPool, 'nCellsSolve', nCellsSolve)
+         call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
+         call mpas_pool_get_dimension(statePool, 'index_qo3', index_qo3)
+         call mpas_pool_get_array(statePool, 'scalars', scalars, 1)
+
+         qo3 => scalars(index_qo3,:,:)
+
+         maxqo3_local = max(maxqo3_local, &
+                            maxval(abs(qo3(1:nVertLevels,1:nCellsSolve))))
+
+         block => block % next
+     end do
+
+     call mpas_dmpar_max_real(dminfo, maxqo3_local, maxqo3_global)
+
+     if (maxqo3_global <= 1.0e-20_RKIND) then
+         call mpas_log_write('')
+         call mpas_log_write('*******************************************************************************', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('The option config_o3_source = ''prognostic'' requires a valid non-zero ozone', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('mixing-ratio field (qo3), but qo3 is zero everywhere in the model input.', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('This may indicate that O3MR was missing or was not correctly processed when', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('the MPAS initial-condition or restart file was generated.', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('Either provide valid prognostic ozone initial conditions or a restart file,', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('or set config_o3_source = ''climatology'' to use monthly climatology for ozone', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('To include qo3 in the initial-condition file, set config_use_ozone=true when running init_atmosphere.', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('Also, verify that the intermediate file used by init_atmosphere contains the O3MR field.', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('*******************************************************************************', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('')
          ierr = ierr + 1
      end if
 

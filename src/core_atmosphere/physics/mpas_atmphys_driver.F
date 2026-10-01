@@ -21,6 +21,7 @@
  use mpas_atmphys_driver_seaice,only: allocate_seaice,deallocate_seaice,driver_seaice
  use mpas_atmphys_driver_sfclayer
  use mpas_atmphys_driver_oml
+ use mpas_atmphys_driver_photochem,only: driver_photochem
  use mpas_atmphys_constants
  use mpas_atmphys_interface
  use mpas_atmphys_sfc_diagnostics,only: atmphys_sfc_diagnostics
@@ -140,7 +141,9 @@
                                   config_pbl_scheme,        &
                                   config_radt_lw_scheme,    &
                                   config_radt_sw_scheme,    &
-                                  config_sfclayer_scheme
+                                  config_sfclayer_scheme,   &
+                                  config_photochem_o3_scheme, &
+                                  config_photochem_h2o_scheme
 
  logical, pointer:: config_oml1d
  real(kind=RKIND),pointer:: config_bucket_radt
@@ -171,13 +174,17 @@
  call mpas_pool_get_config(domain%configs,'config_bucket_update'    ,config_bucket_update    )
  call mpas_pool_get_config(domain%configs,'config_frac_seaice'      ,config_frac_seaice      ) 
  call mpas_pool_get_config(domain%configs,'config_oml1d'            ,config_oml1d            )
+ call mpas_pool_get_config(domain%configs,'config_photochem_o3_scheme' ,config_photochem_o3_scheme )
+ call mpas_pool_get_config(domain%configs,'config_photochem_h2o_scheme',config_photochem_h2o_scheme)
 
- if(config_convection_scheme .ne. 'off' .or. &
-    config_lsm_scheme        .ne. 'off' .or. &
-    config_pbl_scheme        .ne. 'off' .or. & 
-    config_radt_lw_scheme    .ne. 'off' .or. &
-    config_radt_sw_scheme    .ne. 'off' .or. &
-    config_sfclayer_scheme   .ne. 'off') then
+ if(config_convection_scheme     .ne. 'off' .or. &
+    config_lsm_scheme            .ne. 'off' .or. &
+    config_pbl_scheme            .ne. 'off' .or. &
+    config_radt_lw_scheme        .ne. 'off' .or. &
+    config_radt_sw_scheme        .ne. 'off' .or. &
+    config_sfclayer_scheme       .ne. 'off' .or. &
+    config_photochem_o3_scheme   .ne. 'off' .or. &
+    config_photochem_h2o_scheme  .ne. 'off') then
 
  block => domain % blocklist
  do while(associated(block))
@@ -210,6 +217,29 @@
                             cellSolveThreadStart(thread),cellSolveThreadEnd(thread))
     end do
 !$OMP END PARALLEL DO
+
+    !calls to ozone and stratospheric water-vapor photochemistry.
+    if(trim(config_photochem_o3_scheme) /= 'off') then
+       call mpas_timer_start('ozone photochemistry')
+!$OMP PARALLEL DO
+       do thread=1,nThreads
+          call driver_photochem(block%configs,diag_physics,tend_physics, &
+                                cellSolveThreadStart(thread),cellSolveThreadEnd(thread),.true.,.false.)
+       end do
+!$OMP END PARALLEL DO
+       call mpas_timer_stop('ozone photochemistry')
+    endif
+
+    if(trim(config_photochem_h2o_scheme) /= 'off') then
+       call mpas_timer_start('h2o photochemistry')
+!$OMP PARALLEL DO
+       do thread=1,nThreads
+          call driver_photochem(block%configs,diag_physics,tend_physics, &
+                                cellSolveThreadStart(thread),cellSolveThreadEnd(thread),.false.,.true.)
+       end do
+!$OMP END PARALLEL DO
+       call mpas_timer_stop('h2o photochemistry')
+    endif
 
     !call to cloud scheme:
     if(l_radtlw .or. l_radtsw) then

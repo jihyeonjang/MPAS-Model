@@ -33,6 +33,11 @@
  type (mpas_io_context_type), intent(inout) :: iocontext
 
 !local variables:
+ character(len=StrKIND),pointer:: config_o3_source
+ character(len=StrKIND),pointer:: config_photochem_o3_scheme
+ character(len=StrKIND),pointer:: config_photochem_h2o_scheme
+ logical,pointer:: config_photochem_diagnostics
+ logical,pointer:: photochem_o3_in,photochem_h2o_in,photochem_o3_diag_in,photochem_h2o_diag_in
  character(len=StrKIND),pointer:: config_microp_scheme
  character(len=StrKIND),pointer:: config_convection_scheme
  character(len=StrKIND),pointer:: config_pbl_scheme
@@ -54,6 +59,38 @@
  call mpas_log_write('')
 
 !--- initialization of all packages for parameterizations of cloud microphysics:
+
+!--- photochemistry. config_o3_source decides whether the transported ozone mixing ratio qo3 exists at
+!    all, because it is what the RRTMG radiation reads; the photochemistry schemes that advance qo3 are
+!    selected separately, and may be off while qo3 is still transported:
+ nullify(photochem_o3_in)
+ call mpas_pool_get_package(packages,'photochem_o3_inActive',photochem_o3_in)
+ nullify(photochem_h2o_in)
+ call mpas_pool_get_package(packages,'photochem_h2o_inActive',photochem_h2o_in)
+ nullify(photochem_o3_diag_in)
+ call mpas_pool_get_package(packages,'photochem_o3_diag_inActive',photochem_o3_diag_in)
+ nullify(photochem_h2o_diag_in)
+ call mpas_pool_get_package(packages,'photochem_h2o_diag_inActive',photochem_h2o_diag_in)
+
+ call mpas_pool_get_config(configs,'config_o3_source'            ,config_o3_source            )
+ call mpas_pool_get_config(configs,'config_photochem_o3_scheme'  ,config_photochem_o3_scheme  )
+ call mpas_pool_get_config(configs,'config_photochem_h2o_scheme' ,config_photochem_h2o_scheme )
+ call mpas_pool_get_config(configs,'config_photochem_diagnostics',config_photochem_diagnostics)
+
+ if(.not.associated(photochem_o3_in) .or. .not.associated(photochem_h2o_in) .or. &
+    .not.associated(photochem_o3_diag_in) .or. .not.associated(photochem_h2o_diag_in)) then
+    call mpas_log_write('*** error in subroutine atmphys_setup_packages: the photochem packages ' // &
+                        'are not defined.',messageType=MPAS_LOG_ERR)
+    ierr = 1
+    return
+ endif
+
+ photochem_o3_in       = (trim(config_o3_source) == 'prognostic')
+ photochem_h2o_in      = (trim(config_photochem_h2o_scheme) /= 'off')
+ photochem_o3_diag_in  = config_photochem_diagnostics .and. &
+                         (trim(config_photochem_o3_scheme) /= 'off')
+ photochem_h2o_diag_in = config_photochem_diagnostics .and. &
+                         (trim(config_photochem_h2o_scheme) /= 'off')
 
  call mpas_pool_get_config(configs,'config_microp_scheme',config_microp_scheme)
 

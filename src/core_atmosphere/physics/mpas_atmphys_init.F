@@ -22,6 +22,7 @@
 
  use mpas_atmphys_landuse
  use mpas_atmphys_o3climatology
+ use mpas_atmphys_driver_photochem,only: init_photochem
  use mpas_atmphys_lsm_noahmpinit,only: init_lsm_noahmp
 
  use bl_ugwpv1_ngw, only: ugwpv1_ngw_init
@@ -109,10 +110,10 @@ use mpas_stream_manager
 
 !local pointers:
  logical,pointer:: config_do_restart,    &
-                   config_o3climatology, &
                    config_oml1d
 
  character(len=StrKIND),pointer::            &
+                   config_o3_source,         &
                    config_convection_scheme, &
                    config_lsm_scheme,        &
                    config_microp_scheme,     &
@@ -136,6 +137,7 @@ use mpas_stream_manager
                                          tyear_accum,tyear_mean
  real(kind=RKIND),dimension(:),pointer:: sst,sstsk,tmn,xice,xicem
  real(kind=RKIND),dimension(:,:),pointer:: tlag
+ real(kind=RKIND),dimension(:,:),pointer:: accrthratensw,accrthratenlw
 
  real(kind=RKIND),pointer:: config_oml_hml0
  real(kind=RKIND),dimension(:),pointer:: t_oml,t_oml_initial,t_oml_200m_initial
@@ -167,7 +169,7 @@ use mpas_stream_manager
 !call mpas_log_write('--- enter subroutine physics_init:')
 
  call mpas_pool_get_config(configs,'config_do_restart'       ,config_do_restart       )
- call mpas_pool_get_config(configs,'config_o3climatology'    ,config_o3climatology    )
+ call mpas_pool_get_config(configs,'config_o3_source'        ,config_o3_source        )
  call mpas_pool_get_config(configs,'config_convection_scheme',config_convection_scheme)
  call mpas_pool_get_config(configs,'config_lsm_scheme'       ,config_lsm_scheme       )
  call mpas_pool_get_config(configs,'config_microp_scheme'    ,config_microp_scheme    )
@@ -196,6 +198,9 @@ use mpas_stream_manager
  call mpas_pool_get_array(diag_physics,'i_aclwupbc'  ,i_aclwupbc  )
  call mpas_pool_get_array(diag_physics,'i_aclwupt'   ,i_aclwupt   )
  call mpas_pool_get_array(diag_physics,'i_aclwuptc'  ,i_aclwuptc  )
+
+ call mpas_pool_get_array(diag_physics,'accrthratensw',accrthratensw)
+ call mpas_pool_get_array(diag_physics,'accrthratenlw',accrthratenlw)
 
  call mpas_pool_get_array(diag_physics,'acswdnb'     ,acswdnb     )
  call mpas_pool_get_array(diag_physics,'acswdnbc'    ,acswdnbc    )
@@ -323,6 +328,13 @@ use mpas_stream_manager
        aclwupt(iCell)  = 0._RKIND
        aclwuptc(iCell) = 0._RKIND
     enddo
+
+    do k = 1, nVertLevels
+    do iCell = 1, nCellsSolve
+       accrthratensw(k,iCell) = 0._RKIND
+       accrthratenlw(k,iCell) = 0._RKIND
+    enddo
+    enddo
  endif
 
 !initialization of xicem:
@@ -394,7 +406,11 @@ use mpas_stream_manager
  endif
 
 !read the input files that contain the monthly-mean ozone climatology on fixed pressure levels:
- if(config_o3climatology) call init_o3climatology(mesh,atm_input)
+ if(trim(config_o3_source) == 'climatology') call init_o3climatology(mesh,atm_input)
+
+!read the ozone and water vapor production and loss forcing files, and compute the latitude
+!interpolation indices and weights of every cell:
+ call init_photochem(configs,mesh,diag_physics)
 
 !initialization of global surface properties. set here for now, but may be moved when time
 !manager is implemented:

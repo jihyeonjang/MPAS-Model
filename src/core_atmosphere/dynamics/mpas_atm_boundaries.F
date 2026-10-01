@@ -82,6 +82,7 @@ module mpas_atm_boundaries
         use mpas_log, only : mpas_log_write
         use mpas_derived_types, only : MPAS_STREAM_MGR_NOERR, MPAS_LOG_ERR
         use mpas_timekeeping, only : mpas_get_time
+        use mpas_pool_routines, only : mpas_pool_get_config
 
         implicit none
 
@@ -98,11 +99,15 @@ module mpas_atm_boundaries
         type (mpas_pool_type), pointer :: state
         type (mpas_pool_type), pointer :: lbc
         real (kind=RKIND) :: dt
+        real (kind=RKIND) :: maxqo3_lbc
+        character(len=StrKIND), pointer :: config_o3_source
 
         integer, pointer :: nCells_ptr
+        integer, pointer :: nCellsSolve_ptr
         integer, pointer :: nEdges_ptr
         integer, pointer :: nVertLevels_ptr
         integer, pointer :: index_qv_ptr
+        integer, pointer :: index_qo3_ptr
         integer, pointer :: nScalars_ptr
         integer :: nCells, nEdges, nVertLevels, index_qv, nScalars
 
@@ -181,11 +186,38 @@ module mpas_atm_boundaries
 
         call mpas_pool_get_array(mesh, 'cellsOnEdge', cellsOnEdge)
         call mpas_pool_get_dimension(mesh, 'nCells', nCells_ptr)
+        call mpas_pool_get_dimension(mesh, 'nCellsSolve', nCellsSolve_ptr)
         call mpas_pool_get_dimension(mesh, 'nEdges', nEdges_ptr)
         call mpas_pool_get_dimension(mesh, 'nVertLevels', nVertLevels_ptr)
         call mpas_pool_get_dimension(state, 'num_scalars', nScalars_ptr)
         call mpas_pool_get_dimension(lbc, 'index_qv', index_qv_ptr)
         call mpas_pool_get_array(mesh, 'zz', zz)
+
+        ! Check that prognostic ozone was supplied in the LBC input.
+        call mpas_pool_get_config(block % configs, 'config_o3_source', config_o3_source)
+        if (trim(config_o3_source) == 'prognostic') then
+            call mpas_pool_get_dimension(lbc, 'index_qo3', index_qo3_ptr)
+
+            if (index_qo3_ptr <= 0) then
+                call mpas_log_write('config_o3_source = ''prognostic'', but index_qo3 is invalid in the LBC input.', &
+                                    messageType=MPAS_LOG_ERR)
+                ierr = 1
+                return
+            end if
+
+            maxqo3_lbc = maxval(abs(scalars(index_qo3_ptr,1:nVertLevels_ptr,1:nCellsSolve_ptr)))
+
+            if (maxqo3_lbc <= 1.0e-20_RKIND) then
+                call mpas_log_write('The option config_o3_source = ''prognostic'' requires non-zero lateral boundary ozone,', &
+                                    messageType=MPAS_LOG_ERR)
+                call mpas_log_write('but lbc_qo3 appears to be zero everywhere in the LBC record valid at '//trim(read_time)//'.', &
+                                    messageType=MPAS_LOG_ERR)
+                call mpas_log_write('Check O3MR in the LBC files (init_atmosphere with config_use_ozone = .true.).', &
+                                    messageType=MPAS_LOG_ERR)
+                ierr = 1
+                return
+            end if
+        end if
 
         MPAS_ACC_TIMER_START('mpas_atm_update_bdy_tend [ACC_data_xfer]')
         if (.not. firstCall) then

@@ -473,6 +473,10 @@
                 <package name="cu_ntiedtke_in" description="parameterization of Tiedtke convection."/>
                 <package name="bl_ysu_in" description="parameterization of YSU Planetary Boundary Layer."/>
                 <package name="bl_mynn_in" description="parameterization of MYNN Planetary Boundary Layer."/>
+                <package name="photochem_o3_in" description="prognostic ozone: allocates qo3 and its photochemical tendency."/>
+                <package name="photochem_h2o_in" description="stratospheric water vapor photochemistry."/>
+                <package name="photochem_o3_diag_in" description="optional per-term diagnostics of ozone photochemistry."/>
+                <package name="photochem_h2o_diag_in" description="optional per-term diagnostics of stratospheric water vapor photochemistry."/>
                 <package name="sf_noahmp_in" description="parameterization of NOAH-MP land surface scheme."/>
 
                 <package name="iau" description="Incremental Analysis Update"/>
@@ -827,6 +831,8 @@
 			<var name="aclwupbc"/>
 			<var name="aclwupt"/>
 			<var name="aclwuptc"/>
+			<var name="accrthratensw"/>
+			<var name="accrthratenlw"/>
 			<var name="glw"/>
 			<var name="o3clim"/>
 			<var name="o3vmr"/>
@@ -1745,6 +1751,14 @@
                         <var name="tke" array_group="turbulence" units="m^2 s^{-2}"
                              description="Turbulent kinetic energy for the prognostic tke LES scheme"
                              packages="les"/>
+
+                        <!-- Ozone is transported like any other scalar. It is deliberately not in the
+                             "moist" array group: it must not contribute to the moist air mass. The
+                             photochem_o3_in package is switched on by atmphys_setup_packages when
+                             config_o3_source = 'prognostic'. -->
+                        <var name="qo3" array_group="passive" units="kg kg^{-1}"
+                             description="Ozone mixing ratio"
+                             packages="photochem_o3_in"/>
                 </var_array>
 #endif
 
@@ -1833,15 +1847,13 @@
                      description="Potential temperature"/>
 
                 <var name="temperature" type="real" dimensions="nVertLevels nCells Time" units="K"
-                     description="temperature"
-                     packages="jedi_da"/>
+                     description="temperature"/>
 
                 <var name="relhum" type="real" dimensions="nVertLevels nCells Time" units="percent"
                      description="Relative humidity"/>
 
                 <var name="spechum" type="real" dimensions="nVertLevels nCells Time" units="kg kg^{-1}"
-                     description="Specific humidity"
-                     packages="jedi_da"/>
+                     description="Specific humidity"/>
 
                 <var name="v" type="real" dimensions="nVertLevels nEdges Time" units="m s^{-1}"
                      description="Horizontal tangential velocity at edges"/>
@@ -2112,6 +2124,10 @@
                         <var name="tend_tke" name_in_code="tke" array_group="turbulence" units="kg m^{-3} m^2 s^{-2} s^{-1}" 
                              description="Tendency of tke multiplied by dry air density divided by d(zeta)/dz"
                              packages="les"/>
+
+                        <var name="tend_qo3" name_in_code="qo3" array_group="passive" units="kg m^{-3} s^{-1}"
+                             description="Tendency of ozone mass per unit volume divided by d(zeta)/dz"
+                             packages="photochem_o3_in"/>
                 </var_array>
 #endif
         </var_struct>
@@ -2195,6 +2211,11 @@
                              units="m^2 s^{-3}"
                              description="Lateral boundary tendency of TKE"
                              packages="les"/>
+
+                        <var name="lbc_qo3" name_in_code="qo3" array_group="passive"
+                             units="kg kg^{-1} s^{-1}"
+                             description="Lateral boundary tendency of ozone mixing ratio"
+                             packages="photochem_o3_in"/>
                 </var_array>
         </var_struct>
 
@@ -2283,10 +2304,35 @@
                      description="logical for configuration of deep soil temperatures"
                      possible_values=".true. for slowly time-varying deep soil temperatures; .false. otherwise"/>
 
-                <nml_option name="config_o3climatology" type="logical" default_value="true" in_defaults="false"
+                <nml_option name="config_o3_source" type="character" default_value="climatology" in_defaults="false"
                      units="-"
-                     description="logical for configuration of input ozone data in RRMTG long- and short-wave radiation"
-                     possible_values=".true. for using monthly-varying ozone data; .false. for using fixed vertical profile"/>
+                     description="source of the ozone seen by the RRTMG long- and short-wave radiation. 'prognostic' also switches on the photochem_o3_in package, which allocates the transported ozone mixing ratio qo3; the photochemistry schemes that advance qo3 are selected separately with config_photochem_o3_scheme. CAM radiation continues to use its internally supplied monthly climatological ozone"
+                     possible_values="`climatology',`prognostic'"/>
+
+                <nml_option name="config_photochem_o3_scheme" type="character" default_value="off" in_defaults="false"
+                     units="-"
+                     description="ozone photochemistry parameterization"
+                     possible_values="`oz_phys_2015',`off'"/>
+
+                <nml_option name="config_photochem_h2o_scheme" type="character" default_value="off" in_defaults="false"
+                     units="-"
+                     description="stratospheric water vapor photochemistry parameterization"
+                     possible_values="`h2o_phys',`off'"/>
+
+                <nml_option name="config_photochem_diagnostics" type="logical" default_value="false" in_defaults="false"
+                     units="-"
+                     description="logical for the output of the individual production and loss terms of the photochemistry"
+                     possible_values=".true. or .false."/>
+
+                <nml_option name="config_o3prdlos_file" type="character" default_value="global_o3prdlos.f77" in_defaults="false"
+                     units="-"
+                     description="name of the ozone production and loss forcing file read by the ozone photochemistry"
+                     possible_values="Any valid filename"/>
+
+                <nml_option name="config_h2oprdlos_file" type="character" default_value="global_h2oprdlos.f77" in_defaults="false"
+                     units="-"
+                     description="name of the water vapor production and loss forcing file read by the water vapor photochemistry"
+                     possible_values="Any valid filename"/>
 
                 <nml_option name="config_microp_re" type="logical" default_value="false" in_defaults="false"
                      units="-"
@@ -2552,6 +2598,16 @@
         </nml_record>
 
         <var_struct name="diag_physics" time_levs="1">
+
+                <!-- Accumulated radiative potential-temperature tendencies.
+                     Radiation is not necessarily recomputed every model timestep; these fields sum
+                     the SW/LW tendencies actually applied by the host on every timestep, including
+                     timesteps that reuse the most recently computed radiation tendency. -->
+                <var name="accrthratensw" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
+                     description="running sum of shortwave potential-temperature tendency applied each model timestep"/>
+
+                <var name="accrthratenlw" type="real" dimensions="nVertLevels nCells Time" units="K s^{-1}"
+                     description="running sum of longwave potential-temperature tendency applied each model timestep"/>
 
 
                 <!-- ================================================================================================= -->
@@ -3125,7 +3181,7 @@
                 <var name="rubldiff" type="real" dimensions="nVertLevels nCells Time" units="m s^{-2}"
                      description="change in PBL zonal wind tendency due to gravity wave drag over orography"/>
 
-		<var name="rvbldiff" type="real" dimensions="nVertLevels nCells Time"  units="m s^{-2}"
+                <var name="rvbldiff" type="real" dimensions="nVertLevels nCells Time"  units="m s^{-2}"
                      description="change in PBL meridional wind tendency due to gravity wave drag over orography"/>
 
 
@@ -3970,7 +4026,7 @@
 #endif
 
         <var_struct name="tend_iau" time_levs="1" packages="iau">
-			
+
                 <!-- analysis increments; read from iau input -->
                 <var name="u_amb"     name_in_code="u" type="real" dimensions="nVertLevels nEdges Time" units="m s^{-1}"
                      description="Horizontal normal velocity increment"/>
@@ -4017,5 +4073,7 @@
 
 #ifdef DO_PHYSICS
 #include "physics/Registry_noahmp.xml"
+
+#include "physics/Registry_photochem.xml"
 #endif
 </registry>

@@ -1907,6 +1907,7 @@ module atm_time_integration
       character (len=StrKIND), pointer :: config_convection_scheme
 
       integer, pointer :: index_qv, nCellsSolve, nVertices_ptr, nVerticesSolve
+      integer, pointer :: index_qo3
       integer, pointer :: nCells_ptr, nEdges_ptr, nEdgesSolve_ptr
       integer, pointer :: nVertLevels_ptr, num_scalars_ptr
       integer :: nCells, nEdges, nVertices, nEdgesSolve, nVertLevels, num_scalars
@@ -1926,6 +1927,7 @@ module atm_time_integration
       real (kind=RKIND), dimension(:,:,:), pointer :: scalars, scalars_1, scalars_2
 
       real (kind=RKIND), dimension(:,:), pointer :: rqvdynten, rthdynten, theta_m
+      real (kind=RKIND), dimension(:,:), pointer :: rqo3totten
       real (kind=RKIND), dimension(:,:), pointer :: pressure_p, rtheta_p, exner, tend_u
       real (kind=RKIND), dimension(:,:), pointer :: rho_pp, rtheta_pp, ru_p, rw_p, pv_edge, rho_edge
       real (kind=RKIND) :: theta_local, fac_m
@@ -2013,6 +2015,10 @@ module atm_time_integration
 
 #ifdef DO_PHYSICS
       call mpas_pool_get_dimension(state, 'index_qv', index_qv)
+      ! qo3 is only allocated when the photochem_o3_in package is on; the Registry sets the index of an
+      ! inactive var_array constituent to -1:
+      nullify(index_qo3)
+      call mpas_pool_get_dimension(state, 'index_qo3', index_qo3)
 #endif
       call mpas_pool_get_dimension(state, 'num_scalars', num_scalars_ptr)
       num_scalars = num_scalars_ptr
@@ -2143,7 +2149,7 @@ module atm_time_integration
       call mpas_timer_start('physics_get_tend')
       rk_step = 1
       dynamics_substep = 1
-      call physics_get_tend( block, mesh, state, diag, tend, tend_physics, &
+      call physics_get_tend( block, mesh, state, diag, tend, tend_physics, diag_physics, &
                              block % configs, rk_step, dynamics_substep, &
                              tend_ru_physics, tend_rtheta_physics, tend_rho_physics, &
                              exchange_halo_group )
@@ -2876,6 +2882,41 @@ module atm_time_integration
          deallocate(scalars_driving)
 
       end if  ! regional_MPAS addition
+
+#ifdef DO_PHYSICS
+      !
+      ! Total tendency of the ozone mixing ratio over the time step: transport plus the photochemistry,
+      ! that is, everything that changed qo3 between the two time levels.
+      !
+      ! This is deliberately the LAST thing computed in atm_srk3, after the clipping of negative mixing
+      ! ratios and after the regional boundary values have been set, because both of those can still
+      ! change qo3. Diagnosing it here is what makes the budget close exactly:
+      !
+      !     qo3(n+1) = qo3(n) + rqo3totten * dt
+      !
+      ! Subtracting rqo3phten removes the explicit photochemistry contribution, but the remainder can also
+      ! contain positivity-clipping and regional-boundary corrections; it is therefore not, in general, a
+      ! pure transport diagnostic.
+      !
+      ! Only the owned columns are computed; the halo is zeroed, because the scalars at time level 1 are
+      ! not guaranteed to be up to date there unless the monotonic transport was used (see the note on
+      ! rqvdynten above).
+      !
+      if (index_qo3 > 0) then
+         call mpas_pool_get_array(state, 'scalars', scalars_1, 1)
+         call mpas_pool_get_array(state, 'scalars', scalars_2, 2)
+         call mpas_pool_get_array(tend_physics, 'rqo3totten', rqo3totten)
+         if (associated(rqo3totten)) then
+            rqo3totten(:,:) = 0._RKIND
+            do k = 1, nVertLevels
+               do iCell = 1, nCellsSolve
+                  rqo3totten(k,iCell) = ( scalars_2(index_qo3,k,iCell) &
+                                        - scalars_1(index_qo3,k,iCell) ) / dt
+               end do
+            end do
+         end if
+      end if
+#endif
 
       call summarize_timestep(domain)
 

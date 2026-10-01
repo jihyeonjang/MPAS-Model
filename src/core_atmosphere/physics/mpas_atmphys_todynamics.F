@@ -95,7 +95,7 @@
  end subroutine pre_physics_get_tend
  
 !=================================================================================================================
- subroutine physics_get_tend(block,mesh,state,diag,tend,tend_physics,configs,rk_step,dynamics_substep, &
+ subroutine physics_get_tend(block,mesh,state,diag,tend,tend_physics,diag_physics,configs,rk_step,dynamics_substep, &
                              tend_ru_physics,tend_rtheta_physics,tend_rho_physics,exchange_halo_group)
 !=================================================================================================================
 
@@ -112,6 +112,7 @@
  type(mpas_pool_type),intent(inout):: diag
  type(mpas_pool_type),intent(inout):: tend
  type(mpas_pool_type),intent(inout):: tend_physics
+ type(mpas_pool_type),intent(inout):: diag_physics
 
  real(kind=RKIND),intent(inout),dimension(:,:):: tend_ru_physics,tend_rtheta_physics,tend_rho_physics
 
@@ -121,10 +122,12 @@
                                   microp_scheme,     &
                                   radt_lw_scheme,    &
                                   radt_sw_scheme
+ character(len=StrKIND),pointer:: photochem_o3_scheme,photochem_h2o_scheme
 
  integer:: i,iCell,k,n
  integer,pointer:: index_qv,index_qc,index_qr,index_qi,index_qs
  integer,pointer:: index_nc,index_ni,index_nifa,index_nwfa
+ integer,pointer:: index_qo3
  integer,pointer:: nCells,nCellsSolve,nEdges,nEdgesSolve
 
  real(kind=RKIND),dimension(:,:),pointer:: mass          ! time level 2 rho_zz
@@ -138,7 +141,9 @@
  real(kind=RKIND),dimension(:,:),pointer:: rthcuten,rqvcuten,rqccuten, &
                                            rqrcuten,rqicuten,rqscuten, &
                                            rucuten,rvcuten
- real(kind=RKIND),dimension(:,:),pointer:: rthratenlw,rthratensw                                    
+ real(kind=RKIND),dimension(:,:),pointer:: rthratenlw,rthratensw
+ real(kind=RKIND),dimension(:,:),pointer:: accrthratenlw,accrthratensw
+ real(kind=RKIND),dimension(:,:),pointer:: rqo3phten,rqvphten
  
  real(kind=RKIND),dimension(:,:),pointer:: tend_u_phys !nick
  real(kind=RKIND),dimension(:,:,:),pointer:: tend_scalars
@@ -159,6 +164,8 @@
  call mpas_pool_get_config(configs,'config_pbl_scheme'       ,pbl_scheme       )
  call mpas_pool_get_config(configs,'config_radt_lw_scheme'   ,radt_lw_scheme   )
  call mpas_pool_get_config(configs,'config_radt_sw_scheme'   ,radt_sw_scheme   )
+ call mpas_pool_get_config(configs,'config_photochem_o3_scheme' ,photochem_o3_scheme )
+ call mpas_pool_get_config(configs,'config_photochem_h2o_scheme',photochem_h2o_scheme)
 
  call mpas_pool_get_array(state,'theta_m' ,theta_m,1)
  call mpas_pool_get_array(state,'scalars' ,scalars,1)
@@ -175,6 +182,7 @@
  call mpas_pool_get_dimension(state,'index_ni',index_ni)
  call mpas_pool_get_dimension(state,'index_nifa',index_nifa)
  call mpas_pool_get_dimension(state,'index_nwfa',index_nwfa)
+ call mpas_pool_get_dimension(state,'index_qo3',index_qo3)
 
  call mpas_pool_get_array(tend_physics,'rublten',rublten)
  call mpas_pool_get_array(tend_physics,'rvblten',rvblten)
@@ -201,6 +209,12 @@
 
  call mpas_pool_get_array(tend_physics,'rthratenlw',rthratenlw)
  call mpas_pool_get_array(tend_physics,'rthratensw',rthratensw)
+
+ call mpas_pool_get_array(diag_physics,'accrthratenlw',accrthratenlw)
+ call mpas_pool_get_array(diag_physics,'accrthratensw',accrthratensw)
+
+ call mpas_pool_get_array(tend_physics,'rqo3phten',rqo3phten)
+ call mpas_pool_get_array(tend_physics,'rqvphten' ,rqvphten)
 
  call mpas_pool_get_array(tend,'scalars_tend',tend_scalars)
 
@@ -238,17 +252,21 @@
  if(.not. associated(rniblten)) allocate(rniblten(0,0))
  if(.not. associated(rnifablten)) allocate(rnifablten(0,0))
  if(.not. associated(rnwfablten)) allocate(rnwfablten(0,0))
+ if(.not. associated(rqo3phten)) allocate(rqo3phten(0,0))
+ if(.not. associated(rqvphten))  allocate(rqvphten(0,0))
 
  call physics_get_tend_work( &
               block,mesh,nCells,nEdges,nCellsSolve,nEdgesSolve,rk_step,dynamics_substep, &
               pbl_scheme,convection_scheme,microp_scheme,radt_lw_scheme,radt_sw_scheme,  &
               index_qv,index_qc,index_qr,index_qi,index_qs,                              &
-              index_nc,index_ni,index_nifa,index_nwfa,                                   &
+              index_nc,index_ni,index_nifa,index_nwfa,index_qo3,                         &
+              photochem_o3_scheme,photochem_h2o_scheme,rqo3phten,rqvphten,      &
               mass,mass_edge,theta_m,scalars,                                            &
               rublten,rvblten,rthblten,rqvblten,rqcblten,rqiblten,rqsblten,              &
               rncblten,rniblten,rnifablten,rnwfablten,                                   &
               rucuten,rvcuten,rthcuten,rqvcuten,rqccuten,rqrcuten,rqicuten,rqscuten,     &
-              rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
+              rthratenlw,rthratensw,accrthratenlw,accrthratensw,                         &
+              rublten_Edge,rucuten_Edge,                                                 &
               tend_th,tend_rtheta_physics,tend_scalars,tend_ru_physics,tend_u_phys,      &
               exchange_halo_group)
 
@@ -273,6 +291,8 @@
  if(size(rniblten) == 0) deallocate(rniblten)
  if(size(rnifablten) == 0) deallocate(rnifablten)
  if(size(rnwfablten) == 0) deallocate(rnwfablten)
+ if(size(rqo3phten) == 0) deallocate(rqo3phten)
+ if(size(rqvphten) == 0)  deallocate(rqvphten)
 
  deallocate(tend_th)
 
@@ -305,12 +325,14 @@
                     block,mesh,nCells,nEdges,nCellsSolve,nEdgesSolve,rk_step,dynamics_substep, &
                     pbl_scheme,convection_scheme,microp_scheme,radt_lw_scheme,radt_sw_scheme,  &
                     index_qv,index_qc,index_qr,index_qi,index_qs,                              &
-                    index_nc,index_ni,index_nifa,index_nwfa,                                   &
+                    index_nc,index_ni,index_nifa,index_nwfa,index_qo3,                         &
+                    photochem_o3_scheme,photochem_h2o_scheme,rqo3phten,rqvphten,      &
                     mass,mass_edge,theta_m,scalars,                                            &
                     rublten,rvblten,rthblten,rqvblten,rqcblten,rqiblten,rqsblten,              &
                     rncblten,rniblten,rnifablten,rnwfablten,                                   &
                     rucuten,rvcuten,rthcuten,rqvcuten,rqccuten,rqrcuten,rqicuten,rqscuten,     &
-                    rthratenlw,rthratensw,rublten_Edge,rucuten_Edge,                           &
+                    rthratenlw,rthratensw,accrthratenlw,accrthratensw,                         &
+                    rublten_Edge,rucuten_Edge,                                                 &
                     tend_th,tend_theta,tend_scalars,tend_u,tend_u_phys,                        &
                     exchange_halo_group)
 !=================================================================================================================
@@ -331,6 +353,8 @@
  integer,intent(in):: rk_step,dynamics_substep
  integer,intent(in):: index_qv,index_qc,index_qr,index_qi,index_qs
  integer,intent(in):: index_nc,index_ni,index_nifa,index_nwfa
+ integer,intent(in):: index_qo3
+ character(len=StrKIND),intent(in):: photochem_o3_scheme,photochem_h2o_scheme
 
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: mass
  real(kind=RKIND),intent(in),dimension(nVertLevels,nEdges+1):: mass_edge
@@ -360,6 +384,12 @@
 
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rthratenlw
  real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rthratensw
+
+ real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: accrthratenlw
+ real(kind=RKIND),intent(inout),dimension(nVertLevels,nCells+1):: accrthratensw
+
+ real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rqo3phten
+ real(kind=RKIND),intent(in),dimension(nVertLevels,nCells+1):: rqvphten
 
 !inout arguments:
  real(kind=RKIND),intent(inout),dimension(nVertLevels,nEdges+1):: rublten_Edge
@@ -480,6 +510,46 @@
     do i = 1, nCellsSolve
     do k = 1, nVertLevels
        tend_th(k,i) = tend_th(k,i) + rthratensw(k,i)*mass(k,i)
+    enddo
+    enddo
+ endif
+
+
+!accumulate the radiative potential-temperature tendencies applied by the host.
+!RRTMG is not necessarily called every model timestep, so rthratenlw/rthratensw may
+!be reused between radiation calls. Sum the value applied on every timestep.
+ if(radt_lw_scheme .ne. 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+       accrthratenlw(k,i) = accrthratenlw(k,i) + rthratenlw(k,i)
+    enddo
+    enddo
+ endif
+
+ if(radt_sw_scheme .ne. 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+       accrthratensw(k,i) = accrthratensw(k,i) + rthratensw(k,i)
+    enddo
+    enddo
+ endif
+
+
+!add coupled tendencies due to the ozone photochemistry:
+ if(trim(photochem_o3_scheme) /= 'off' .and. index_qo3 > 0) then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+       tend_scalars(index_qo3,k,i) = tend_scalars(index_qo3,k,i) + rqo3phten(k,i)*mass(k,i)
+    enddo
+    enddo
+ endif
+
+
+!add coupled tendencies due to the stratospheric water vapor photochemistry:
+ if(trim(photochem_h2o_scheme) /= 'off') then
+    do i = 1, nCellsSolve
+    do k = 1, nVertLevels
+       tend_scalars(index_qv,k,i) = tend_scalars(index_qv,k,i) + rqvphten(k,i)*mass(k,i)
     enddo
     enddo
  endif
