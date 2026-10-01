@@ -1,0 +1,24 @@
+# Sparse-checkout specification for the CCPP physics external (see ../../Externals.cfg).
+#
+# These are exactly the files compiled by ./Makefile and listed in ../../CMakeLists.txt: the two
+# photochemistry schemes, plus the machine, physcons and funcphys modules they import. funcphys is
+# needed because module_ozphys imports fpkapx from it for its climatological-ozone path, which MPAS does
+# not use but which still has to link. LICENSE is kept so that the terms travel with the sources.
+#
+# Each entry is anchored with a leading '/' so that a file added upstream inside one of these directories
+# is not silently pulled into the build.
+#
+# NOTE ON THE PATH: manage_externals resolves the "sparse" entry of Externals.cfg relative to the CLONED
+# repository, not to Externals.cfg (see _sparse_checkout in manic/repository_git.py, which does
+# os.path.join(repo_dir, sparse)). This file therefore has to be referenced from Externals.cfg as
+# "../ccpp_photochem.sparse", climbing back out of ccpp-physics/ into this directory.
+#
+# This thins the WORKING TREE only: the working tree drops from 27 MB to about 0.2 MB. The clone still
+# downloads the full history into ccpp-physics/.git (about 40 MB), so this saves source-tree clutter and
+# build-system surprises rather than download time.
+/LICENSE
+/physics/hooks/machine.F
+/physics/hooks/physcons.F90
+/physics/tools/funcphys.f90
+/physics/photochem/module_ozphys.F90
+/physics/photochem/module_h2ophys.F90
