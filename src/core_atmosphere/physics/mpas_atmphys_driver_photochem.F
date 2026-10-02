@@ -2,68 +2,23 @@
  module mpas_atmphys_driver_photochem
 !=================================================================================================================
 !
-! Drives the CCPP ozone and stratospheric water vapor photochemistry from the MPAS physics.
+! Driver for the CCPP ozone and stratospheric water-vapor photochemistry schemes.
 !
-! The CCPP schemes are parameterized production and loss rates: they take the model temperature, pressure
-! and layer mass, interpolate a table of coefficients to the model latitude, level and time of year, and
-! return an updated mixing ratio. MPAS turns that into a tendency and hands it to the dynamics with the
-! other physics tendencies, so that ozone and water vapor are advanced in exactly the same way as the
-! tendencies from the PBL and convection schemes.
+! The CCPP schemes use model temperature, pressure, latitude, time, and tracer
+! mixing ratios to calculate photochemical changes in ozone and water vapor.
+! MPAS converts these mixing-ratio changes into physics tendencies and passes
+! them to the dynamics.
 !
-! What this driver reads from mpas_atmphys_vars, all filled by MPAS_to_physics:
+! The main MPAS fields used here are:
+!   t_p           temperature                                      [K]
+!   pres_hyd_p    hydrostatic layer pressure                       [Pa]
+!   pres2_hydd_p  dry hydrostatic interface pressure               [Pa]
+!   qv_p          water-vapor mixing ratio                         [kg/kg]
+!   qo3_p         ozone mixing ratio                               [kg/kg]
 !
-!   t_p           temperature at theta levels                                      [K]
-!   pres_hyd_p    hydrostatic pressure at theta levels                             [Pa]
-!   pres2_hydd_p  "dry" hydrostatic pressure at w levels                           [Pa]
-!   qv_p          water vapor mixing ratio                                         [kg/kg]
-!   qo3_p         ozone mixing ratio                                               [kg/kg]
-!
-! Two points are worth spelling out.
-!
-! Vertical ordering. Every array in the CCPP photochemistry is ordered from the surface to the top of the
-! atmosphere: run_o3prog_2015 accumulates the overhead ozone column downward from colo3(:,nLev+1) = 0.
-! The MPAS physics arrays have kts = 1 at the surface, so the two orderings agree and the columns are
-! passed through unchanged.
-!
-! Which pressures are passed, and why. The two CCPP arguments play different roles, and the choice for
-! each follows what the MPAS radiation already does.
-!
-! p is a COORDINATE. It is only used as log(p), to interpolate the CHEM2D coefficients from the pressure
-! levels of the forcing file onto the model layers, and for the 100 hPa threshold in h2ophys. The same
-! operation happens inside RRTMG, which interpolates the MPAS ozone climatology from its own pressure
-! levels with vinterp_ozn(..., play, pin, ...) where play is pres_hyd_p. Using pres_hyd_p here puts the
-! two ozone paths, climatological and prognostic, on one coordinate, and places a layer where the
-! radiation places it. That is why the moist pressure is used, not pres_hydd_p.
-!
-! dp is a MASS element. It turns a mixing ratio into a partial column: run_o3prog_2015 accumulates
-! colo3(k) = colo3(k+1) + oz(k)*dp(k)/g. MPAS scalars are mixing ratios with respect to DRY air, so the
-! consistent partner is the dry thickness, pres2_hydd_p(k) - pres2_hydd_p(k+1), which makes colo3 the
-! true ozone mass per unit area. RRTMG does the same thing by another route: it takes the moist
-! interface pressures and divides the water out, coldry = (pz(l-1)-pz(l))/(amm*(1+wvmr)), to obtain a
-! dry air column before multiplying by the ozone volume mixing ratio.
-!
-! So this is not a mixed pair. A moist coordinate with a dry mass element is exactly the combination
-! RRTMG uses internally. The UFS-MPAS bridge in NOAA-EMC/ufsatm makes the other self consistent choice,
-! feeding pmiddry and pintdry to the whole CCPP suite including the radiation; that works there because
-! everything is dry. Native MPAS physics is on the moist coordinate, so half-adopting the dry one here
-! would be the inconsistency.
-!
-! Two second-order points. The climatological ozone in the forcing file, prod(:,6), is a GFS moist
-! mixing ratio while the model ozone is a dry one; they differ by a factor (1+qv), about 4e-6 in the
-! stratosphere where this parameterization acts. And dp enters only through the difference
-! colo3 - coloz, both accumulated with the same dp, so the choice of basis largely cancels there.
-!
-! Where this runs. In the GFS v17 suite the photochemistry sits in the phys_ts group, after radiation and
-! the PBL and before convection and microphysics, and it is handed gt0, the temperature already updated
-! by those schemes. MPAS physics is tendency based rather than state updating: every scheme sees the same
-! input sounding, and the tendencies are summed and applied by the dynamics. There is therefore no gt0
-! equivalent, and the position of this call inside physics_driver does not change its result. The
-! temperature used here is the one at the start of the time step.
-!
-! What the CCPP schemes return. run_o3prog_* and h2ophys%run update the mixing ratio in place; the UFS
-! writes straight into gq0, its updated tracer state. MPAS instead converts the increment into a rate and
-! passes it to the dynamics with the other physics tendencies, which is the same operation expressed in
-! the host model's own coupling.
+! pres_hyd_p is used as the pressure coordinate for interpolating the
+! photochemical coefficients. The dry pressure thickness from pres2_hydd_p
+! is used for the ozone-column calculation.
 !
 !=================================================================================================================
 

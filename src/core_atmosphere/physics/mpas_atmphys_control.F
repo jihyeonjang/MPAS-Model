@@ -660,21 +660,24 @@
          call mpas_log_write('')
          call mpas_log_write('*******************************************************************************', &
                              messageType=MPAS_LOG_ERR)
-         call mpas_log_write('The option config_o3_source = ''prognostic'' requires a valid non-zero ozone', &
+         call mpas_log_write('The option config_o3_source = ''prognostic'' requires a valid non-zero qo3 field,', &
                              messageType=MPAS_LOG_ERR)
-         call mpas_log_write('mixing-ratio field (qo3), but qo3 is zero everywhere in the model input.', &
+         call mpas_log_write('but qo3 is zero everywhere in the model input.', &
                              messageType=MPAS_LOG_ERR)
+         call mpas_log_write('')
          call mpas_log_write('This may indicate that O3MR was missing or was not correctly processed when', &
                              messageType=MPAS_LOG_ERR)
-         call mpas_log_write('the MPAS initial-condition or restart file was generated.', &
+         call mpas_log_write('the initial-condition file was generated.', &
                              messageType=MPAS_LOG_ERR)
+         call mpas_log_write('Verify that the intermediate file used by init_atmosphere contains O3MR.', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('To include qo3 in the initial file from O3MR, set config_use_ozone=true ' // &
+                             'when running init_atmosphere.', &
+                             messageType=MPAS_LOG_ERR)
+         call mpas_log_write('')
          call mpas_log_write('Either provide valid prognostic ozone initial conditions or a restart file,', &
                              messageType=MPAS_LOG_ERR)
-         call mpas_log_write('or set config_o3_source = ''climatology'' to use monthly climatology for ozone', &
-                             messageType=MPAS_LOG_ERR)
-         call mpas_log_write('To include qo3 in the initial-condition file, set config_use_ozone=true when running init_atmosphere.', &
-                             messageType=MPAS_LOG_ERR)
-         call mpas_log_write('Also, verify that the intermediate file used by init_atmosphere contains the O3MR field.', &
+         call mpas_log_write('or set config_o3_source = ''climatology'' to use monthly climatology for ozone.', &
                              messageType=MPAS_LOG_ERR)
          call mpas_log_write('*******************************************************************************', &
                              messageType=MPAS_LOG_ERR)

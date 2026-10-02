@@ -2,27 +2,9 @@
  module mpas_atmphys_photochem_ccpp
 !=================================================================================================================
 !
-! This is the only file in MPAS that imports the CCPP photochemistry modules. Everything that MPAS needs
-! from the CCPP is re-exported here, so that no other MPAS source has to be compiled with the CCPP module
-! directory on its include path. That matters because the CCPP and NoahMP both define a Fortran module
-! named "machine" (physics_noahmp/utility/Machine.F90), and only one of the two may be visible to any
-! given compilation.
-!
-! The CCPP sources are used exactly as they come from the ufs-community/ccpp-physics checkout made by
-! manage_externals; nothing in physics_photochem/ccpp-physics is modified. The derived types ty_ozphys and
-! ty_h2ophys hold the forcing data (latitude axis, pressure axis, time axis and the production and loss
-! coefficients) internally, so MPAS does not have to store them in the Registry.
-!
-! The two instances below are module variables rather than Registry fields because the forcing data are
-! global: they do not depend on the MPAS block decomposition, and every block interpolates from the same
-! arrays. They are read once, from subroutine init_ozphys and init_h2ophys.
-!
-! To add another CCPP photochemistry scheme:
-!   1. add its source file to physics_photochem/ccpp_photochem.sparse, to CCPP_OBJS in
-!      physics_photochem/Makefile and to ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES in ../CMakeLists.txt,
-!   2. import it here, and
-!   3. call it from mpas_atmphys_driver_photochem.F.
-! No other file has to be touched.
+! This module provides the interface between MPAS and the CCPP photochemistry schemes. 
+! It is the only MPAS source compiled with the CCPP module directory. This avoids a module-name
+! conflict because both CCPP and NoahMP contain a module named "machine".
 !
 !=================================================================================================================
 
@@ -103,15 +85,9 @@
  call validate_photochem_time_axis('ozone',trim(o3file),ozphys%ntime,ozphys%time)
 
 !
-!    run_o3prog_2015 indexes prod(:,5) and prod(:,6), the climatological temperature and the
-!    climatological ozone mixing ratio, unconditionally: a file with fewer coefficients would be read
-!    out of bounds.
-!
-!    run_o3prog_2006 updates ozone only inside "if (this%ncf == 2)" and "if (this%ncf == 4)" blocks.
-!    There is no branch for any other value, so with the six-coefficient GFS file it reads the file,
-!    interpolates the coefficients in latitude, time and height, and then leaves ozone completely
-!    unchanged, without any error. Its ozib temporary is also only assigned inside those two blocks,
-!    so the optional do3_dt_ozmx diagnostic would read an undefined value.
+! Validate the number of forcing coefficients required by each ozone scheme. 
+! oz_phys_2015 uses 6 coefficients, while oz_phys_2006 supports only 2 or 4. 
+! Invalid values can cause out-of-bounds access or leave ozone unchanged. 
 !
  select case(trim(o3_scheme))
 
@@ -209,10 +185,9 @@
  subroutine validate_photochem_time_axis(species,file_name,ntime,time)
 !=================================================================================================================
 
-!The CCPP file format stores ntime coefficient records but ntime+1 time coordinates. The extra coordinate
-!is the first forcing record wrapped forward by one climatological year. MPAS therefore requires a strictly
-!increasing 365-day annual axis; accepting another period would make the Gregorian day-of-year mapping and
-!the final-to-first cyclic interpolation ambiguous.
+! The CCPP forcing file contains ntime coefficient sets and ntime+1 time values.
+! The extra time value is time(1) + 365 days and represents the first coefficient set 
+! in the next annual cycle for Dec-Jan interpolation.
 
  character(len=*),intent(in):: species,file_name
  integer,intent(in):: ntime
@@ -248,12 +223,9 @@
  subroutine update_ozphys_forcing(idx1,idx2,idxh,rjday,ozpl)
 !=================================================================================================================
 
-!Use the untouched CCPP interpolation routine for all ordinary monthly intervals. The only special case is
-!the cyclic interval from the final forcing record to the first record of the next year. CCPP stores the
-!next-year time coordinate in time(ntime+1), but its data array has only ntime records; passing idxt2=1 to
-!the stock update_o3prog routine would combine data record 1 with time(1), rather than time(ntime+1), and
-!therefore gives incorrect weights across December/January. Handle that single cyclic interval in the MPAS
-!adapter without modifying the imported CCPP source.
+! Use the CCPP interpolation for normal intervals. 
+! For the Dec-Jan wraparound, January still uses data record 1, but its time must be taken from 
+! time(ntime+1), not time(1). Handle this cyclic interval in MPAS without modifying the CCPP source.
 
  integer,intent(in),dimension(:):: idx1,idx2
  real(kind=RKIND),intent(in),dimension(:):: idxh
@@ -429,11 +401,9 @@ endif
  subroutine find_photochem_time_index(ntime,time,rjday,n1,n2,cyclic)
 !=================================================================================================================
 
-!Brackets rjday between two entries of the forcing time axis. This is a copy of the routine of the same
-!name contained in GFS_phys_time_vary.fv3.F90, repeated here for two reasons: it is a contained procedure
-!there and so cannot be imported, and its dummy argument for the time axis is declared with the default
-!real kind, which only matches the CCPP kind_phys because the UFS compiles ccpp-physics with -r8. MPAS
-!does not, so the kind is written out explicitly below.
+! Find the two forcing times that surround rjday. This routine follows the CCPP version in 
+! GFS_phys_time_vary.fv3.f90. It is repeated here because MPAS uses RKIND explictly for 
+! the forcing-time array.
 
 !input arguments:
  integer,intent(in):: ntime
