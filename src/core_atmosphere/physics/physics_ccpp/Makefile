@@ -5,7 +5,7 @@
 #
 #   ccpp-physics/          the ufs-community/ccpp-physics working tree, thinned by the sparse
 #                          specification below. Nothing in it is modified by MPAS.
-#   ccpp_photochem.sparse   the list of files checked out (see ../../Externals.cfg).
+#   ccpp_selected.sparse   the list of files checked out (see ../../Externals.cfg).
 #
 # The MPAS code that drives these schemes lives one directory up, with the rest of the physics:
 #

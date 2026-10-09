@@ -386,7 +386,7 @@ set(ATMOSPHERE_CORE_INCLUDES
 
 
 # The CCPP photochemistry subset (see Externals.cfg and
-# physics/physics_photochem/ccpp_photochem.sparse)
+# physics/physics_ccpp/ccpp_selected.sparse)
 set(ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES
     hooks/machine.F
     hooks/physcons.F90
@@ -394,7 +394,7 @@ set(ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES
     photochem/module_ozphys.F90
     photochem/module_h2ophys.F90
 )
-list(TRANSFORM ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES PREPEND physics/physics_photochem/ccpp-physics/physics/)
+list(TRANSFORM ATMOSPHERE_CORE_PHOTOCHEM_CCPP_SOURCES PREPEND physics/physics_ccpp/ccpp-physics/physics/)
 
 # The CCPP and NoahMP both define a Fortran module named "machine"
 # (physics/physics_noahmp/utility/Machine.F90).
@@ -411,7 +411,7 @@ set_target_properties(atmosphere_photochem_ccpp PROPERTIES
 target_include_directories(atmosphere_photochem_ccpp PRIVATE ${CCPP_PHOTOCHEM_MODULE_DIR})
 
 # machine.F is fixed-form Fortran, unlike the rest of the CCPP subset.
-set_source_files_properties(physics/physics_photochem/ccpp-physics/physics/hooks/machine.F
+set_source_files_properties(physics/physics_ccpp/ccpp-physics/physics/hooks/machine.F
                             PROPERTIES Fortran_FORMAT FIXED)
 
 # MPAS uses SINGLE_PRECISION while the CCPP machine module uses SINGLE_PREC.

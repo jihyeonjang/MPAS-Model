@@ -74,16 +74,16 @@ core_physics_noahmp:
 	(cd physics_noahmp/drivers/mpas; $(MAKE) all COREDEF="$(COREDEF)")
 
 # The CCPP photochemistry subset, compiled inside its own checkout so that its "machine" module does
-# not collide with the NoahMP module of the same name. See physics_photochem/Makefile.
+# not collide with the NoahMP module of the same name. See physics_ccpp/Makefile.
 OBJS_photochem = \
-	physics_photochem/ccpp-physics/machine.o \
-	physics_photochem/ccpp-physics/physcons.o \
-	physics_photochem/ccpp-physics/funcphys.o \
-	physics_photochem/ccpp-physics/module_ozphys.o \
-	physics_photochem/ccpp-physics/module_h2ophys.o
+	physics_ccpp/ccpp-physics/machine.o \
+	physics_ccpp/ccpp-physics/physcons.o \
+	physics_ccpp/ccpp-physics/funcphys.o \
+	physics_ccpp/ccpp-physics/module_ozphys.o \
+	physics_ccpp/ccpp-physics/module_h2ophys.o
 
 core_photochem: core_physics_init
-	(cd physics_photochem; $(MAKE) all COREDEF="$(COREDEF)")
+	(cd physics_ccpp; $(MAKE) all COREDEF="$(COREDEF)")
 
 core_physics_init: $(OBJS_init)
 
@@ -282,7 +282,7 @@ clean:
 	( cd physics_noahmp/src; $(MAKE) clean )
 	( cd physics_noahmp/utility; $(MAKE) clean )
 	( if [ -d physics_noaa/UGWP ]; then cd physics_noaa/UGWP; $(MAKE) clean; fi )
-	( cd physics_photochem; $(MAKE) clean )
+	( cd physics_ccpp; $(MAKE) clean )
 	@# Certain systems with intel compilers generate *.i files
 	@# This removes them during the clean process
 	$(RM) *.i
@@ -293,7 +293,7 @@ clean:
 # CCPP directory must not be added to the shared rule below: it is put first on the include path of
 # this one file only.
 # ----------------------------------------------------------------------
-PHOTOCHEM_INC = -I./physics_photochem/ccpp-physics
+PHOTOCHEM_INC = -I./physics_ccpp/ccpp-physics
 
 mpas_atmphys_photochem_ccpp.o: mpas_atmphys_photochem_ccpp.F
 	$(RM) $@ $*.mod
