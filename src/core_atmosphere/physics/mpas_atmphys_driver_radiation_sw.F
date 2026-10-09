@@ -220,9 +220,9 @@
        !allocate these arrays on the first time step, only:
        if(xtime_s .lt. 1.e-12) then
 
-          if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme,jms:jme) )
+          if(.not.allocated(emstot_p) ) allocate(emstot_p(ims:ime,kms:kme+1,jms:jme) )
           if(.not.allocated(abstot_p) ) &
-             allocate(abstot_p(ims:ime,kms:kme,cam_abs_dim2,jms:jme) )
+             allocate(abstot_p(ims:ime,kms:kme+1,cam_abs_dim2,jms:jme) )
           if(.not.allocated(absnxt_p) ) &
              allocate(absnxt_p(ims:ime,kms:kme,cam_abs_dim1,jms:jme) )
 
