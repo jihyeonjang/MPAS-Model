@@ -253,7 +253,7 @@
       INTEGER, PARAMETER, PRIVATE:: ntb_r1 = 37
       INTEGER, PARAMETER, PRIVATE:: ntb_i1 = 55
       INTEGER, PARAMETER, PRIVATE:: ntb_t = 9
-      INTEGER, PRIVATE:: nic1, nic2, nii2, nii3, nir2, nir3, nis2, nig2, nig3
+      INTEGER, PRIVATE:: nic2, nii2, nii3, nir2, nir3, nis2, nig2, nig3
       INTEGER, PARAMETER, PUBLIC:: ntb_arc = 7
       INTEGER, PARAMETER, PUBLIC:: ntb_arw = 9
       INTEGER, PARAMETER, PUBLIC:: ntb_art = 7
@@ -262,6 +262,8 @@
       INTEGER, PARAMETER, PUBLIC:: ntb_IN = 55
       INTEGER, PRIVATE:: niIN2
 
+!.. nic1 was changed from integer, as TEMPO does.
+      DOUBLE PRECISION, PRIVATE:: nic1
       DOUBLE PRECISION, DIMENSION(nbins+1):: xDx
       DOUBLE PRECISION, DIMENSION(nbc):: Dc, dtc
       DOUBLE PRECISION, DIMENSION(nbi):: Di, dti
