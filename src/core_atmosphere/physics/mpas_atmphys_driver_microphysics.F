@@ -433,9 +433,11 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
+ logical,pointer:: config_do_restart
 
 !local variables and arrays:
  integer:: istep
+ integer:: itimestep_tempo
  integer:: i,j,k
 
 !land-ocean mask passed to TEMPO (1=land, 2=ocean), used for the constant cloud droplet number
@@ -490,6 +492,8 @@
        call mpas_timer_stop('mp_kessler')
 
     case ("mp_tempo")
+       call mpas_pool_get_config(configs,'config_do_restart',config_do_restart)
+
        ! surface emissions are added once per model time-step, before the n_microp substeps,
        ! so the full model time-step dt_dyn is used (not dt_microp = dt_dyn/n_microp)
        if (allocated(nwfa_p) .and. allocated(nwfa2d_p)) then
@@ -506,10 +510,16 @@
        enddo
        enddo
 
+       ! TEMPO takes itimestep = 1 as a cold start and initializes fields.
+       ! MPAS also starts a restart run at itimestep = 1, so pass 2 there
+       ! to avoid initializing again.
+       itimestep_tempo = itimestep
+       if(config_do_restart .and. itimestep == 1) itimestep_tempo = 2
+
        istep = 1
        do while (istep .le. n_microp)
          call tempo_run( tempo_cfgs=tempo_cfgs, &
-            dt      = dt_microp  , itimestep  = itimestep , &
+            dt      = dt_microp  , itimestep  = itimestep_tempo , &
             th      = th_p       , qv         = qv_p      , qc      = qc_p   , &                 
             qr      = qr_p       , qi         = qi_p      , qs     = qs_p    , &                 
             qg      = qg_p       , ni         = ni_p      , nr     = nr_p    , &                 
