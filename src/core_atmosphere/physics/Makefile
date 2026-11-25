@@ -76,7 +76,7 @@ core_physics_noahmp:
 
 core_physics_init: $(OBJS_init)
 
-core_physics: core_physics_wrf core_physics_noahmp
+core_physics: core_physics_wrf core_physics_noahmp core_TEMPO
 	($(MAKE) phys_interface COREDEF="$(COREDEF)")
 	ar -ru libphys.a $(OBJS_init) $(OBJS)
 	($(MAKE) -C ./physics_mmm -f Makefile.mpas physics_mmm_lib)
