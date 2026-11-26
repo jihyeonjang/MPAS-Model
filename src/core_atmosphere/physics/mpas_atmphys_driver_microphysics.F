@@ -341,6 +341,8 @@
  subroutine init_microphysics(dminfo,configs,mesh,state,time_lev,sfc_input,diag_physics)
 !=================================================================================================================
 
+ use module_mp_tempo_params,only: tempo_rdry => rdry, tempo_rv => rv
+
 !input arguments:
  type(dm_info),intent(in):: dminfo
  type(mpas_pool_type),intent(in):: configs
@@ -389,6 +391,10 @@
        end select microp2_select
 
     case("mp_tempo")
+       ! TEMPO computes the air density from its own gas constants.
+       ! Use those of MPAS instead, so that this density equals the MPAS dry-air density.
+       tempo_rdry = R_d
+       tempo_rv   = R_v
        call tempo_init(aerosolaware_flag=config_tempo_aerosolaware, &
             hailaware_flag=config_tempo_hailaware, &
             hailhyperaware_flag=config_tempo_hailhyperaware, tempo_cfgs=tempo_cfgs, &
