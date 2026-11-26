@@ -25,6 +25,8 @@
  use module_mp_tempo_cfgs,only: ty_tempo_cfgs
  use module_mp_tempo_driver,only: tempo_init, tempo_run, &
       ty_tempo_driver_diags, tempo_aerosol_surface_emissions
+ use module_mp_tempo_params,only: tempo_wp => wp, tempo_nwfa_min => nwfa_default
+ use module_mp_tempo_utils,only: calc_cloud_number, calc_ice_number
 
  implicit none
  private
@@ -433,12 +435,15 @@
 
 !local pointers:
  character(len=StrKIND),pointer:: microp_scheme
+ character(len=StrKIND),pointer:: convection_scheme
  logical,pointer:: config_do_restart
+ real(kind=RKIND),dimension(:,:),pointer:: rqccuten
 
 !local variables and arrays:
  integer:: istep
  integer:: itimestep_tempo
  integer:: i,j,k
+ real(kind=RKIND):: dnc
 
 !land-ocean mask passed to TEMPO (1=land, 2=ocean), used for the constant cloud droplet number
 !concentration when the aerosol-aware option is off:
@@ -493,6 +498,45 @@
 
     case ("mp_tempo")
        call mpas_pool_get_config(configs,'config_do_restart',config_do_restart)
+
+!Aerosol-aware TEMPO: cloud water without droplets (nc = 0) gets the fewest, largest drops TEMPO allows and rains
+!out quickly. Give new cloud water a droplet number from TEMPO's calc_cloud_number, taken from nwfa,
+!which is kept at or above nwfa_default as in TEMPO's activation; new cloud ice gets calc_ice_number:
+       if(allocated(nc_p) .and. allocated(nwfa_p)) then
+          !cold start: initial cloud water and cloud ice:
+          if(itimestep == 1 .and. .not. config_do_restart) then
+             do j = jts,jte
+             do k = kts,kte
+             do i = its,ite
+                if(qc_p(i,k,j) > 0._RKIND .and. nc_p(i,k,j) <= 0._RKIND) then
+                   dnc = calc_cloud_number(real(qc_p(i,k,j),tempo_wp),real(nwfa_p(i,k,j)*rho_p(i,k,j),tempo_wp))
+                   nc_p(i,k,j)   = dnc
+                   nwfa_p(i,k,j) = max(tempo_nwfa_min,nwfa_p(i,k,j)-dnc)
+                endif
+                if(qi_p(i,k,j) > 0._RKIND .and. ni_p(i,k,j) <= 0._RKIND) &
+                   ni_p(i,k,j) = calc_ice_number(real(qi_p(i,k,j),tempo_wp),real(th_p(i,k,j)*pi_p(i,k,j),tempo_wp))
+             enddo
+             enddo
+             enddo
+          endif
+          !cloud water detrained by convection since the last call (positive rqccuten only):
+          call mpas_pool_get_config(configs,'config_convection_scheme',convection_scheme)
+          if(trim(convection_scheme) /= 'off') then
+             call mpas_pool_get_array(tend_physics,'rqccuten',rqccuten)
+             do j = jts,jte
+             do k = kts,kte
+             do i = its,ite
+                if(rqccuten(k,i) > 0._RKIND) then
+                   dnc = dt_dyn * calc_cloud_number(real(rqccuten(k,i),tempo_wp), &
+                                                    real(nwfa_p(i,k,j)*rho_p(i,k,j),tempo_wp))
+                   nc_p(i,k,j)   = nc_p(i,k,j) + dnc
+                   nwfa_p(i,k,j) = max(tempo_nwfa_min,nwfa_p(i,k,j)-dnc)
+                endif
+             enddo
+             enddo
+             enddo
+          endif
+       endif
 
        ! surface emissions are added once per model time-step, before the n_microp substeps,
        ! so the full model time-step dt_dyn is used (not dt_microp = dt_dyn/n_microp)
