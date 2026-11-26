@@ -585,10 +585,12 @@
             graupelncv_p(i,j) = graupelncv_p(i,j) + tempo_driver_diags%graupel_liquid_equiv_precip(i,j)
             graupelnc_p(i,j) = graupelnc_p(i,j) + tempo_driver_diags%graupel_liquid_equiv_precip(i,j)      
             rainncv_p(i,j) = rainncv_p(i,j) + tempo_driver_diags%rain_precip(i,j) + &
+               tempo_driver_diags%cloud_precip(i,j) + &
                tempo_driver_diags%ice_liquid_equiv_precip(i,j)  + &
                tempo_driver_diags%snow_liquid_equiv_precip(i,j) + &
                tempo_driver_diags%graupel_liquid_equiv_precip(i,j)
             rainnc_p(i,j) = rainnc_p(i,j) + tempo_driver_diags%rain_precip(i,j) + &
+               tempo_driver_diags%cloud_precip(i,j) + &
                tempo_driver_diags%ice_liquid_equiv_precip(i,j)  + &
                tempo_driver_diags%snow_liquid_equiv_precip(i,j) + &
                tempo_driver_diags%graupel_liquid_equiv_precip(i,j)
