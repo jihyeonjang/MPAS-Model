@@ -935,7 +935,13 @@
 
 !local variables:
  integer:: initflag
+ integer:: i,j
  real(kind=RKIND):: dx
+
+!surface type of each cell for mynnsfc_driver (sf_mynnsfclay only):
+ real(kind=RKIND),parameter:: snowh_thresh = 0.05_RKIND !snow depth (m) from which land counts as snow/ice, as
+                                                        !snow_thresh in MYNN-SFC.
+ logical,dimension(:,:),allocatable:: dry_p,wet_p,icy_p
 
 !CCPP-compliant flags:
  character(len=StrKIND):: errmsg
@@ -1161,6 +1167,27 @@
        call mpas_pool_get_config(configs,'config_mynn_sfcflux_land' ,sf_mynn_sfcflux_land )
        call mpas_pool_get_config(configs,'config_mynn_sfcflux_water',sf_mynn_sfcflux_water)
        call mpas_pool_get_config(configs,'config_lsm_scheme'        ,lsm_scheme           )
+
+       !surface type of each cell, given to mynnsfc_driver so that exactly one of its land, water and ice routines runs
+       !(without these flags it infers the type from xland, snowh and xice).
+       allocate(dry_p(ims:ime,jms:jme),wet_p(ims:ime,jms:jme),icy_p(ims:ime,jms:jme))
+       dry_p = .false.
+       wet_p = .false.
+       icy_p = .false.
+       do j = jts,jte
+       do i = its,ite
+          if(xice_p(i,j) .ge. xice_threshold) then
+             icy_p(i,j) = .true.
+          elseif(xland_p(i,j) .ge. 1.5_RKIND) then
+             wet_p(i,j) = .true.
+          elseif(snowh_p(i,j) .ge. snowh_thresh) then
+             icy_p(i,j) = .true.
+          else
+             dry_p(i,j) = .true.
+          endif
+       enddo
+       enddo
+
        call mynnsfc_driver( &
                    p3d      = pres_hyd_p , th3d      = th_p     , t3d      = t_p         , &
                    u3d      = u_p        , v3d       = v_p      , qv3d     = qv_p        , &
@@ -1181,6 +1208,7 @@
                    ustm     = ustm_p     , ck        = ck_p     , cka      = cka_p       , &
                    cd       = cd_p       , cda       = cda_p    , ch       = ch_p        , &
                    xice     = xice_p     , xice_threshold       = xice_threshold         , &
+                   dry      = dry_p      , wet       = wet_p    , icy      = icy_p       , &
                    spp_pbl               = spp_pbl                                       , &
                    sf_mynn_sfcflux_land  = sf_mynn_sfcflux_land                          , &
                    sf_mynn_sfcflux_water = sf_mynn_sfcflux_water                         , &
@@ -1195,6 +1223,14 @@
                        )
 
        if(config_frac_seaice) then
+          !open-water part of the sea-ice cells (xland_sea = 2): only the water routine runs.
+          do j = jts,jte
+          do i = its,ite
+             dry_p(i,j) = .false.
+             icy_p(i,j) = .false.
+             wet_p(i,j) = xland_sea(i,j) .ge. 1.5_RKIND
+          enddo
+          enddo
           call mynnsfc_driver( &
                       p3d      = pres_hyd_p , th3d      = th_p     , t3d      = t_p         , &
                       u3d      = u_p        , v3d       = v_p      , qv3d     = qv_p        , &
@@ -1214,7 +1250,8 @@
                       isfflx   = isfflx     , dx        = dx_p     ,                          &
                       ustm     = ustm_sea   , ck        = ck_sea   , cka      = cka_sea     , &
                       cd       = cd_sea     , cda       = cda_sea  , ch       = ch_sea      , &
-                      xice     = xice_p     , xice_threshold       = xice_threshold         , & 
+                      xice     = xice_p     , xice_threshold       = xice_threshold         , &
+                      dry      = dry_p      , wet       = wet_p    , icy      = icy_p       , &
                       spp_pbl               = spp_pbl                                       , &
                       sf_mynn_sfcflux_land  = sf_mynn_sfcflux_land                          , &
                       sf_mynn_sfcflux_water = sf_mynn_sfcflux_water     	            , &
@@ -1228,6 +1265,7 @@
                       its = its , ite = ite , jts = jts , jte = jte , kts = kts , kte = kte   &
                           )
        endif
+       deallocate(dry_p,wet_p,icy_p)
        call mpas_timer_stop('sf_mynnsfclay')
 
     case default
